@@ -1,0 +1,28 @@
+HƯỚNG DẪN SỬ DỤNG - CHỈ 1 FILE index.html (LOGO NHÚNG TRỰC TIẾP)
+====================================================================
+- 6 logo giờ đã được NHÚNG TRỰC TIẾP vào bên trong index.html (dạng
+  base64), KHÔNG còn phụ thuộc vào thư mục "assets" nữa. Bạn có thể
+  gửi/copy một mình file index.html đi đâu cũng được, logo vẫn hiển
+  thị đầy đủ, không sợ thất lạc ảnh.
+- Đã bỏ dòng chữ đen (tiêu đề) phía trên nút đỏ để không bị lặp lại
+  tên mục 2 lần. Giờ mỗi thẻ chỉ còn: icon logo + nút đỏ có tên mục.
+
+1) DÁN LINK CỦA BẠN
+   Tìm 6 dòng href="https://link-cua-ban-X.com" trong index.html,
+   thay bằng link thật của bạn (giữ nguyên dấu ngoặc kép). Phía trên
+   mỗi dòng có chú thích <!-- LINK: ... --> cho biết đó là mục nào.
+
+2) THAY LOGO KHÁC (nếu cần)
+   Vì logo đã nhúng thẳng vào file (base64), muốn đổi logo cho 1 mục,
+   cách dễ nhất là nhờ mình thay ảnh mới và mình sẽ nhúng lại giúp bạn.
+   (Nếu tự làm: cần chuyển ảnh mới sang base64 rồi thay vào đúng chuỗi
+   "data:image/png;base64,..." tương ứng trong thẻ <img> của mục đó.)
+
+3) ẢNH NỀN BANNER (vẫn dùng thư mục assets - không bắt buộc)
+   Ảnh nền banner (tuỳ chọn) vẫn nằm ở: assets/banner-bg.jpg
+   Đây là ảnh phụ, không phải logo, nên vẫn để trong assets cho gọn.
+   Nếu chưa có ảnh, banner vẫn hiển thị đẹp với gradient xanh mặc định.
+
+LƯU Ý: Vì logo nhúng trực tiếp nên file index.html sẽ nặng hơn bản
+trước (khoảng 1.9MB thay vì vài chục KB), nhưng đổi lại bạn chỉ cần
+1 file duy nhất, không lo thiếu ảnh khi di chuyển/chia sẻ.
