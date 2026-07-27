@@ -26,7 +26,13 @@
     position:relative;
     overflow:hidden;
     width:100%;
-    aspect-ratio:1328 / 473;
+    /* Kích thước chuẩn của banner trên web: 1920 x 480.
+       Mọi ảnh banner tải lên (dù kích thước gốc khác nhau)
+       sẽ được tự động co giãn + cắt vừa khít khung này
+       nhờ object-fit:cover ở .hero-bg-img bên dưới. */
+    --banner-w:1920;
+    --banner-h:480;
+    aspect-ratio:var(--banner-w) / var(--banner-h);
     min-height:220px;
     max-height:520px;
     display:flex;
@@ -50,6 +56,7 @@
     position:absolute; inset:0;
     width:100%; height:100%;
     object-fit:cover;
+    object-position:center;
     z-index:0;
   }
   .hero-overlay{
@@ -165,12 +172,6 @@
     <img class="hero-bg-img" src="assets/banner-bg.jpg" alt="" onerror="this.style.display='none';">
     <div class="hero-overlay"></div>
     <div class="hero-inner">
-      <!-- Đây là ghi chú 
-      <div class="brand-eyebrow"><span class="dot"> CVA</span> </div>
-      <h1>THPT CHU VĂN AN - CHUYỂN ĐỔI SỐ</h1> 
-      -->
-      <div class="hero-rule"></div>
-      
     </div>
   </header>
 
