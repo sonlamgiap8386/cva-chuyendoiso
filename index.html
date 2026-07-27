@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -26,8 +25,15 @@
   .hero{
     position:relative;
     overflow:hidden;
+    min-height:420px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     background:linear-gradient(135deg,var(--navy-deep) 0%,var(--navy-mid) 55%,var(--navy-light) 100%);
     text-align:center;
+  }
+  @media (max-width:640px){
+    .hero{ min-height:300px; }
   }
   .hero::before{
     content:"";
@@ -45,7 +51,7 @@
   }
   .hero-overlay{
     position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(8,26,52,.82) 0%, rgba(14,52,102,.78) 55%, rgba(28,91,158,.72) 100%);
+    background:linear-gradient(135deg, rgba(8,26,52,.55) 0%, rgba(14,52,102,.48) 55%, rgba(28,91,158,.40) 100%);
     z-index:0;
   }
   .hero-inner{position:relative; z-index:1; max-width:900px; margin:0 auto;}
