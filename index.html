@@ -25,7 +25,10 @@
   .hero{
     position:relative;
     overflow:hidden;
-    min-height:420px;
+    width:100%;
+    aspect-ratio:1328 / 473;
+    min-height:220px;
+    max-height:520px;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -33,7 +36,7 @@
     text-align:center;
   }
   @media (max-width:640px){
-    .hero{ min-height:300px; }
+    .hero{ min-height:180px; }
   }
   .hero::before{
     content:"";
@@ -51,7 +54,7 @@
   }
   .hero-overlay{
     position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(8,26,52,.20) 0%, rgba(14,52,102,.15) 20%, rgba(28,91,158,.10) 100%);
+    background:linear-gradient(135deg, rgba(8,26,52,.20) 0%, rgba(14,52,102,.15) 55%, rgba(28,91,158,.10) 100%);
     z-index:0;
   }
   .hero-inner{position:relative; z-index:1; max-width:900px; margin:0 auto;}
@@ -59,7 +62,7 @@
   .hero{ padding:56px 24px 70px; }
   .brand-eyebrow{
     display:inline-flex; align-items:center; gap:10px;
-    color:#cfe0ff; font-size:13px; letter-spacing:.14em; font-weight:425;
+    color:#cfe0ff; font-size:13px; letter-spacing:.14em; font-weight:600;
     text-transform:uppercase; margin-bottom:22px; opacity:.85;
   }
   .brand-eyebrow .dot{
@@ -165,8 +168,9 @@
       <!-- Đây là ghi chú 
       <div class="brand-eyebrow"><span class="dot"> CVA</span> </div>
       <h1>THPT CHU VĂN AN - CHUYỂN ĐỔI SỐ</h1> 
-      <div class="hero-rule"></div>
       -->
+      <div class="hero-rule"></div>
+      
     </div>
   </header>
 
