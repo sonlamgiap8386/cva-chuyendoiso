@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+  :root{
+    --ink:#1B2A4A;
+    --ink-soft:#3C4A68;
+    --paper:#FBF9F4;
+    --paper-line:#E4DFD1;
+    --card:#FFFFFF;
+    --brass:#B08D57;
+    --brass-dark:#8C6F42;
+    --slate:#6B7280;
+    --good:#2F6F4E;
+    --good-bg:#EAF3EC;
+    --err:#B3261E;
+    --err-bg:#FBEAE9;
+    --teal-deep:#0B5C59;
+    --teal:#0E7C77;
+    --teal-light:#E3F3F1;
+    --radius:12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--paper);
+    background-image: linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 42px;
+    margin: 0;
+    padding: 20px 10px;
+    color: var(--ink);
+  }
+  .card {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--paper-line);
+    border-top: 3px solid var(--teal);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(11,92,89,.08);
+  }
+  .card.wide { max-width: 980px; }
+
+  .banner {
+    background: linear-gradient(135deg, var(--teal-deep), var(--teal) 70%);
+    padding: 24px 20px 22px;
+    text-align: center;
+  }
+  .banner .ten-truong {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: #CFEDE9; margin: 0 0 8px;
+  }
+  .banner .ten-ung-dung {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 700; font-size: clamp(18px, 4vw, 23px); line-height: 1.2;
+    color: #fff; margin: 0 0 6px; letter-spacing: -.01em;
+  }
+  .banner .nam-hoc { font-size: 13px; color: #D9F0EE; margin: 0; }
+
+  .body { padding: 24px 24px 26px; }
+  .tab-nav { display: flex; border-bottom: 1px solid var(--paper-line); background: var(--teal-light); }
+  .tab-btn {
+    flex: 1; margin: 0; padding: 12px 10px; border: none; border-radius: 0;
+    background: transparent; color: var(--ink-soft); font-weight: 600; font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    border-bottom: 3px solid transparent; cursor: pointer;
+  }
+  .tab-btn:hover { background: #d5ece9; color: var(--teal-deep); }
+  .tab-btn.active { color: var(--teal-deep); border-bottom: 3px solid var(--teal); background: #fff; }
+
+  .sub { font-size: 13px; color: var(--teal-deep); text-align: center; margin-bottom: 18px; font-weight: 600; }
+  label {
+    display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+    margin: 14px 0 6px; letter-spacing: .02em;
+  }
+  input, select {
+    width: 100%; padding: 10px 11px; border: 1px solid var(--paper-line);
+    border-radius: 7px; font-size: 14px; background: #fff; color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  textarea {
+    width: 100%; padding: 10px 11px; border: 1px solid var(--paper-line);
+    border-radius: 7px; font-size: 14px; background: #fff; color: var(--ink);
+    font-family: 'Inter', sans-serif;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+  input:disabled, select:disabled, textarea:disabled { background: #F4F1E8; color: #A7A28F; }
+
+  button {
+    margin-top: 20px; width: 100%; padding: 12px; border: none;
+    border-radius: 8px; background: var(--teal-deep); color: #fff;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: background .15s ease, transform .08s ease;
+  }
+  button:hover { background: var(--teal); }
+  button:active { transform: scale(.98); }
+  button:disabled { background: #B7BDC9; cursor: not-allowed; }
+  button.secondary {
+    background: transparent; border: 1px solid var(--paper-line); color: var(--ink-soft);
+    font-weight: 600; margin-top: 8px;
+  }
+  button.secondary:hover { border-color: var(--teal); color: var(--teal-deep); background: transparent; }
+
+  .msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .msg.ok { background: var(--good-bg); color: var(--good); display: block; }
+  .msg.err { background: var(--err-bg); color: var(--err); display: block; }
+  .row2 { display: flex; gap: 10px; }
+  .row2 > div { flex: 1; }
+  .who {
+    font-size: 13px; background: var(--teal-light); color: var(--teal-deep);
+    padding: 8px 10px; border-radius: 8px; margin: 0 0 4px; font-weight: 600;
+  }
+  .upload-box {
+    margin-top: 14px; padding: 14px; background: #FDFBF6;
+    border: 1.5px dashed var(--brass); border-radius: 8px;
+  }
+  .upload-box label { margin-top: 0; }
+  .upload-box input[type="file"] { padding: 6px; background: #fff; font-family: 'Inter', sans-serif; }
+  .hint { font-size: 12px; color: var(--slate); margin-top: 6px; }
+
+  /* ---- Bảng đăng ký cả tuần / xem lịch ---- */
+  .bang-wrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--paper-line); border-radius: 10px; }
+  table.bang-dk { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 13px; font-family: 'Inter', sans-serif; }
+  table.bang-dk th {
+    background: var(--teal-light); color: var(--ink-soft); font-weight: 700; padding: 9px 6px;
+    border: 1px solid var(--paper-line); position: sticky; top: 0; text-align: center;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  table.bang-dk td { border: 1px solid var(--paper-line); padding: 4px; vertical-align: middle; }
+  table.bang-dk td.thu-cell {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px; font-weight: 700; text-align: center; background: var(--teal-light);
+    color: var(--teal-deep); width: 40px;
+  }
+  table.bang-dk td.tiet-cell { text-align: center; font-weight: 600; color: var(--slate); width: 34px; font-family: 'IBM Plex Mono', monospace; }
+  table.bang-dk input, table.bang-dk select {
+    padding: 5px 6px; font-size: 13px; border-radius: 6px; min-width: 60px;
+  }
+  table.bang-dk .col-lop { width: 74px; }
+  table.bang-dk .col-ppct { width: 64px; }
+  table.bang-dk .col-somay { width: 60px; }
+  table.bang-dk .col-baiday { min-width: 210px; }
+  table.bang-dk .col-ghichu { min-width: 110px; }
+  table.bang-dk .col-tinhtrang { min-width: 110px; }
+  table.bang-dk td.chi-doc { color: var(--ink-soft); text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  table.bang-dk tr.dong-trong td { color: #C9C3B2; }
+  .ket-qua-list { margin-top: 12px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
+  .ket-qua-list .dong-loi { color: var(--err); padding: 3px 0; }
+  .ket-qua-list .dong-ok { color: var(--good); padding: 3px 0; }
+
+  .footer-credit {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 16px;
+    background: linear-gradient(90deg, #2563eb, #7c3aed, #db2777, #f59e0b, #16a34a, #2563eb);
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: chayMauChu 6s linear infinite;
+  }
+  @keyframes chayMauChu {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- ===================== MÀN HÌNH ĐĂNG NHẬP ===================== -->
+  <div class="card" id="loginCard">
+    <div class="banner">
+      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN</p>
+      <p class="ten-ung-dung">ĐĂNG KÝ SỬ DỤNG PHÒNG TIN HỌC</p>
+      <p class="nam-hoc">Năm học 2026 - 2027</p>
+    </div>
+    <div class="body">
+      <div class="sub">Vui lòng xác thực thông tin trước khi đăng ký</div>
+
+      <label>Họ và tên GV</label>
+      <input type="text" id="loginHoTen" placeholder="VD: Giáp Văn Khiêm">
+
+      <label>Mật khẩu</label>
+      <input type="password" id="loginMatKhau" placeholder="Mật khẩu">
+
+      <button onclick="dangNhap()">Xác thực</button>
+      <div class="msg" id="loginMsg"></div>
+      <div class="footer-credit">Công cụ nội bộ - Xây dựng và phát triển GVK_512!</div>
+    </div>
+  </div>
+
+  <!-- ===================== KHU VỰC LÀM VIỆC (2 TAB) ===================== -->
+  <div class="card wide" id="workspaceCard" style="display:none;">
+    <div class="banner">
+      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN</p>
+      <p class="ten-ung-dung">ĐĂNG KÝ SỬ DỤNG PHÒNG TIN HỌC</p>
+      <p class="nam-hoc">Năm học 2026 - 2027</p>
+    </div>
+
+    <div class="tab-nav">
+      <button type="button" class="tab-btn active" id="tabBtnDangKy" onclick="chuyenTab('dangky')">📋 Đăng ký tiết</button>
+      <button type="button" class="tab-btn" id="tabBtnLich" onclick="chuyenTab('lich')">📅 Xem lịch / Tình trạng máy</button>
+    </div>
+
+    <div class="body">
+      <div class="who" id="whoBox"></div>
+
+      <!-- ---------- TAB 1: ĐĂNG KÝ CẢ TUẦN ---------- -->
+      <div id="panelDangKy">
+        <div class="sub">Nhập Tuần trước, sau đó điền các tiết muốn đăng ký — để trống các tiết không sử dụng</div>
+
+        <div class="row2">
+          <div>
+            <label>Tuần đăng ký *</label>
+            <input type="number" id="fTuan" min="1" placeholder="VD: 32" oninput="moKhoaBang()">
+          </div>
+          <div id="phongWrap" style="display:none;">
+            <label>Phòng đăng ký *</label>
+            <select id="fPhong" disabled onchange="moKhoaBang()">
+              <option value="">-- Chọn phòng --</option>
+              <option value="1">Phòng Tin học số 1</option>
+              <option value="2">Phòng Tin học số 2</option>
+              <option value="3">Phòng Tin học số 3</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="upload-box">
+          <label>Tự động điền từ file Lịch báo giảng (.xlsx) — không bắt buộc</label>
+          <input type="file" id="fFileTaiLen" accept=".xlsx,.xls" onchange="xuLyFileTaiLen(event)">
+          <div class="hint">Chọn file Lịch báo giảng cá nhân đã có sẵn — hệ thống tự lọc và điền các tiết môn Tin học vào bảng bên dưới.</div>
+          <div class="msg" id="uploadMsg"></div>
+        </div>
+
+        <div class="bang-wrap">
+          <table class="bang-dk">
+            <thead>
+              <tr>
+                <th>Thứ</th><th>Tiết</th><th>Buổi</th><th>Lớp</th>
+                <th>Tiết theo PPCT</th><th>Số máy sử dụng</th><th>Tên bài dạy</th><th>Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody id="thanBang"><!-- JS sinh 30 dòng (6 Thứ x 5 Tiết) tại đây --></tbody>
+          </table>
+        </div>
+
+        <button id="btnDangKy" onclick="guiDangKyCaTuan()" disabled>Đăng ký các tiết đã chọn</button>
+        <button class="secondary" onclick="dangXuat()">Đăng xuất</button>
+        <div class="msg" id="formMsg"></div>
+        <div class="ket-qua-list" id="ketQuaList"></div>
+      </div>
+
+      <!-- ---------- TAB 2: XEM LỊCH TUẦN + TÌNH TRẠNG MÁY ---------- -->
+      <div id="panelLich" style="display:none;">
+        <div class="sub">Chọn Tuần muốn xem để theo dõi hoặc chỉnh sửa Tình trạng đầu giờ / cuối giờ</div>
+
+        <div class="row2">
+          <div>
+            <label>Xem lịch Tuần</label>
+            <input type="number" id="lichTuanInput" min="1" placeholder="VD: 32">
+          </div>
+          <div id="lichPhongWrap" style="display:none;">
+            <label>Phòng</label>
+            <select id="lichPhongSelect">
+              <option value="1">Phòng Tin học số 1</option>
+              <option value="2">Phòng Tin học số 2</option>
+              <option value="3">Phòng Tin học số 3</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button style="margin-top:14px;" onclick="taiLichTheoLuaChon()">Xem lịch</button>
+          </div>
+        </div>
+
+        <div class="sub" id="lichTieuDe"></div>
+
+        <div class="bang-wrap">
+          <table class="bang-dk">
+            <thead>
+              <tr>
+                <th>Thứ</th><th>Tiết</th><th>Buổi</th><th>Lớp</th>
+                <th>Tiết theo PPCT</th><th>Số máy</th><th>Tên bài dạy</th>
+                <th>Tình trạng đầu giờ</th><th>Tình trạng cuối giờ</th><th>GV dạy</th><th>Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody id="thanBangLich"><!-- JS sinh 30 dòng tại đây --></tbody>
+          </table>
+        </div>
+
+        <button id="btnLuuTinhTrang" onclick="luuTinhTrang()">Lưu tình trạng đầu giờ / cuối giờ</button>
+        <button class="secondary" onclick="dangXuat()">Đăng xuất</button>
+        <div class="msg" id="lichMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== CẤU HÌNH BẮT BUỘC ====================
+    // Dán đúng link Web App /exec của bạn (Deploy > Manage deployments
+    // > Web app URL). PHẢI kết thúc bằng "/exec", không phải "/dev".
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcKw8_AORR1_qSjxhlUKTQjbUznVsm47Mun6VLfOWQC39koP13SY9-XbtOEWDe0rWpyg/exec';
+    // =============================================================
+
+    function goiApiThat_(hanhDong, doiSo) {
+      return fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        // Cố tình dùng text/plain để trình duyệt không gửi preflight OPTIONS
+        // (Apps Script Web App không xử lý OPTIONS -> sẽ lỗi CORS nếu để
+        // Content-Type là application/json).
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: hanhDong, args: doiSo })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (!json.ok) throw new Error(json.error || 'Lỗi không xác định từ máy chủ.');
+          return json.result;
+        });
+    }
+
+    // Giả lập lại đúng cú pháp google.script.run.withSuccessHandler()...
+    // để có thể dùng nguyên vẹn code trong JavaScript.html mà không cần sửa gì.
+    function taoRunnerThat_(thanhCong, thatBai) {
+      return new Proxy({}, {
+        get: function (target, prop) {
+          if (prop === 'withSuccessHandler') return function (fn) { return taoRunnerThat_(fn, thatBai); };
+          if (prop === 'withFailureHandler') return function (fn) { return taoRunnerThat_(thanhCong, fn); };
+          return function () {
+            var args = Array.prototype.slice.call(arguments);
+            goiApiThat_(prop, args)
+              .then(function (ketQua) { if (thanhCong) thanhCong(ketQua); })
+              .catch(function (loi) { if (thatBai) thatBai(loi); else console.error(loi); });
+          };
+        }
+      });
+    }
+
+    window.google = { script: { run: taoRunnerThat_(null, null) } };
+
+  // Phải khớp với DANH_SACH_THU / DANH_SACH_TIET / BUOI_MAC_DINH trong Config.gs
+  const DANH_SACH_THU = [2, 3, 4, 5, 6, 7];
+  const DANH_SACH_TIET = [1, 2, 3, 4, 5];
+  const BUOI_MAC_DINH = 'Sáng';
+
+  let PHIEN = { hoTen: '', matKhau: '', phongCoDinh: null };
+
+  // ===================== ĐĂNG NHẬP =====================
+  function dangNhap() {
+    const hoTen = document.getElementById('loginHoTen').value.trim();
+    const matKhau = document.getElementById('loginMatKhau').value;
+    const msg = document.getElementById('loginMsg');
+    msg.className = 'msg';
+
+    if (!hoTen || !matKhau) {
+      msg.className = 'msg err';
+      msg.textContent = 'Vui lòng nhập đầy đủ họ tên và mật khẩu.';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res.thanhCong) {
+          PHIEN.hoTen = res.hoTen;
+          PHIEN.matKhau = matKhau;
+          PHIEN.phongCoDinh = res.phongCoDinh;
+          hienThiFormDangKy();
+        } else {
+          msg.className = 'msg err';
+          msg.textContent = res.thongBao;
+        }
+      })
+      .withFailureHandler(function (err) {
+        msg.className = 'msg err';
+        msg.textContent = 'Lỗi hệ thống: ' + err.message;
+      })
+      .xacThuc(hoTen, matKhau);
+  }
+
+  function hienThiFormDangKy() {
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('workspaceCard').style.display = 'block';
+    document.getElementById('whoBox').textContent =
+      'Đang đăng nhập: ' + PHIEN.hoTen +
+      (PHIEN.phongCoDinh ? ' — Phòng cố định: ' + PHIEN.phongCoDinh : ' — GV khác (chọn phòng bên dưới)');
+    document.getElementById('phongWrap').style.display = PHIEN.phongCoDinh ? 'none' : 'block';
+    document.getElementById('lichPhongWrap').style.display = PHIEN.phongCoDinh ? 'none' : 'block';
+    taoBangDangKy();
+    if (PHIEN.phongCoDinh) apDungMacDinhSoMay(PHIEN.phongCoDinh);
+    chuyenTab('dangky');
+  }
+
+  // Chuyển qua lại giữa tab "Đăng ký tiết" và tab "Xem lịch / Tình trạng máy"
+  // mà không mất dữ liệu đang nhập ở tab kia.
+  function chuyenTab(ten) {
+    const laDangKy = ten === 'dangky';
+    document.getElementById('panelDangKy').style.display = laDangKy ? 'block' : 'none';
+    document.getElementById('panelLich').style.display = laDangKy ? 'none' : 'block';
+    document.getElementById('tabBtnDangKy').classList.toggle('active', laDangKy);
+    document.getElementById('tabBtnLich').classList.toggle('active', !laDangKy);
+  }
+
+  // Lấy số máy mặc định của phòng (từ DANHMUC_PHONG) và điền sẵn vào các ô
+  // "Số máy sử dụng" đang còn trống — GV vẫn có thể tự sửa nếu thực tế khác.
+  function apDungMacDinhSoMay(phong) {
+    if (!phong) return;
+    google.script.run
+      .withSuccessHandler(function (soMay) {
+        document.querySelectorAll('.f-somay').forEach(function (el) {
+          if (el.value.trim() === '') el.value = soMay;
+        });
+      })
+      .withFailureHandler(function () { /* bỏ qua, GV có thể tự nhập */ })
+      .laySoMayPhong(phong);
+  }
+
+  function dangXuat() {
+    PHIEN = { hoTen: '', matKhau: '', phongCoDinh: null };
+    document.getElementById('workspaceCard').style.display = 'none';
+    document.getElementById('loginCard').style.display = 'block';
+    document.getElementById('loginMatKhau').value = '';
+    document.getElementById('loginMsg').className = 'msg';
+    document.getElementById('fTuan').value = '';
+    document.getElementById('ketQuaList').innerHTML = '';
+    document.getElementById('formMsg').className = 'msg';
+    document.getElementById('lichMsg').className = 'msg';
+    document.getElementById('thanBangLich').innerHTML = '';
+    document.getElementById('lichTieuDe').textContent = '';
+  }
+
+  // ===================== SINH BẢNG 6 THỨ x 5 TIẾT =====================
+  function taoBangDangKy() {
+    const tbody = document.getElementById('thanBang');
+    let html = '';
+    DANH_SACH_THU.forEach(function (thu) {
+      DANH_SACH_TIET.forEach(function (tiet, idx) {
+        html += '<tr data-thu="' + thu + '" data-tiet="' + tiet + '">';
+        if (idx === 0) {
+          html += '<td class="thu-cell" rowspan="' + DANH_SACH_TIET.length + '">' + thu + '</td>';
+        }
+        html += '<td class="tiet-cell">' + tiet + '</td>';
+        html += '<td><select class="o-dang-ky f-buoi" disabled>' +
+                  '<option value="Sáng"' + (BUOI_MAC_DINH === 'Sáng' ? ' selected' : '') + '>Sáng</option>' +
+                  '<option value="Chiều"' + (BUOI_MAC_DINH === 'Chiều' ? ' selected' : '') + '>Chiều</option>' +
+                '</select></td>';
+        html += '<td class="col-lop"><input class="o-dang-ky f-lop" type="text" disabled placeholder="11A1"></td>';
+        html += '<td class="col-ppct"><input class="o-dang-ky f-ppct" type="text" disabled placeholder="VD: 54" onblur="tuDongDienBaiDay(this)"></td>';
+        html += '<td class="col-somay"><input class="o-dang-ky f-somay" type="number" min="0" disabled placeholder="25"></td>';
+        html += '<td class="col-baiday"><input class="o-dang-ky f-baiday" type="text" disabled placeholder="Tự điền theo PPCT hoặc nhập tay"></td>';
+        html += '<td class="col-ghichu"><input class="o-dang-ky f-ghichu" type="text" disabled placeholder="Không bắt buộc"></td>';
+        html += '</tr>';
+      });
+    });
+    tbody.innerHTML = html;
+  }
+
+  // Khi GV nhập xong "Tiết theo PPCT" (rời khỏi ô), tự tra "Tên bài dạy"
+  // dựa trên Lớp đã nhập ở cùng dòng. Nếu ô Tên bài dạy đã có nội dung do
+  // GV tự gõ thì không ghi đè.
+  function tuDongDienBaiDay(oPPCT) {
+    const tr = oPPCT.closest('tr');
+    const oLop = tr.querySelector('.f-lop');
+    const oBaiDay = tr.querySelector('.f-baiday');
+    const lop = oLop.value.trim();
+    const ppct = oPPCT.value.trim();
+    if (!lop || !ppct) return;
+    if (oBaiDay.value.trim() !== '') return; // đã có nội dung, không ghi đè
+
+    google.script.run
+      .withSuccessHandler(function (tenBai) {
+        if (tenBai) oBaiDay.value = tenBai;
+      })
+      .withFailureHandler(function () { /* im lặng, GV có thể tự gõ tay */ })
+      .layTenBaiDay(lop, ppct);
+  }
+
+  // Tuần (và Phòng nếu là GV khác) phải nhập trước mới mở khóa bảng
+  function moKhoaBang() {
+    const coTuan = document.getElementById('fTuan').value.trim().length > 0;
+    let coPhong = true;
+    let phongDaChon = PHIEN.phongCoDinh;
+    if (!PHIEN.phongCoDinh) {
+      phongDaChon = document.getElementById('fPhong').value;
+      coPhong = phongDaChon !== '';
+    }
+    const moKhoa = coTuan && coPhong;
+    document.querySelectorAll('.o-dang-ky').forEach(function (el) { el.disabled = !moKhoa; });
+    document.getElementById('btnDangKy').disabled = !moKhoa;
+    if (coPhong) apDungMacDinhSoMay(phongDaChon);
+  }
+
+  // ===================== GỬI ĐĂNG KÝ CẢ TUẦN =====================
+  // ===================== TỰ ĐỘNG ĐIỀN TỪ FILE LỊCH BÁO GIẢNG (.xlsx) =====================
+  // Cấu trúc file: các cột "Thứ", "Buổi học", "Tiết học TKB", "Lớp học",
+  // "Tiết theo PPCT", "Bài dạy" (và tuỳ chọn "Ghi chú"). Tên cột phải khớp
+  // chính xác dòng tiêu đề trong file — nếu trường bạn đổi mẫu Lịch báo
+  // giảng, sửa lại đối tượng TEN_COT bên dưới cho khớp.
+  const TEN_COT_FILE = {
+    thu: 'Thứ', buoi: 'Buổi học', tiet: 'Tiết học TKB', monhoc: 'Môn học',
+    lop: 'Lớp học', ppct: 'Tiết theo PPCT', baiday: 'Bài dạy', ghichu: 'Ghi chú'
+  };
+
+  // Chỉ nhận các tiết có Môn học đúng bằng tên này (không phân biệt hoa/thường)
+  const MON_HOC_CAN_LOC = 'Tin học';
+
+  function xuLyFileTaiLen(evt) {
+    const file = evt.target.files[0];
+    const uploadMsg = document.getElementById('uploadMsg');
+    uploadMsg.className = 'msg';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+
+        // Tự nhận diện số Tuần từ nội dung file (VD: "Tuần học: Tuần 1 (19/01/2026 - 24/01/2026)")
+        if (document.getElementById('fTuan').value.trim() === '') {
+          for (let i = 0; i < rows.length; i++) {
+            const dong = rows[i].join(' | ');
+            const m = dong.match(/Tuần\s*(\d+)\s*\(/);
+            if (m) {
+              document.getElementById('fTuan').value = m[1];
+              moKhoaBang();
+              break;
+            }
+          }
+        }
+
+        const ketQua = docFileLichBaoGiang_(rows);
+        if (ketQua.loi) {
+          uploadMsg.className = 'msg err';
+          uploadMsg.textContent = ketQua.loi;
+          return;
+        }
+
+        let soDongDaDien = 0;
+        ketQua.danhSach.forEach(function (row) {
+          const tr = document.querySelector('#thanBang tr[data-thu="' + row.thu + '"][data-tiet="' + row.tiet + '"]');
+          if (!tr) return;
+          if (row.buoi === 'Sáng' || row.buoi === 'Chiều') tr.querySelector('.f-buoi').value = row.buoi;
+          tr.querySelector('.f-lop').value = row.lop;
+          tr.querySelector('.f-ppct').value = row.ppct;
+          tr.querySelector('.f-baiday').value = row.baiday;
+          if (row.ghiChu) tr.querySelector('.f-ghichu').value = row.ghiChu;
+          soDongDaDien++;
+        });
+
+        uploadMsg.className = 'msg ok';
+        uploadMsg.textContent = 'Đã tự động điền ' + soDongDaDien + ' tiết Tin học từ file. Vui lòng kiểm tra lại và xoá ô Lớp ở dòng nào không muốn đăng ký.';
+      } catch (err) {
+        uploadMsg.className = 'msg err';
+        uploadMsg.textContent = 'Không đọc được file. Hãy chắc chắn đây là file Lịch báo giảng đúng mẫu (.xlsx).';
+      } finally {
+        evt.target.value = ''; // cho phép chọn lại cùng 1 file nếu cần
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Tìm dòng tiêu đề và trích các dòng dữ liệu hợp lệ (có Bài dạy) từ file.
+  function docFileLichBaoGiang_(rows) {
+    let hangTieuDe = -1;
+    for (let i = 0; i < Math.min(rows.length, 30); i++) {
+      const hang = rows[i].map(function (x) { return String(x || '').trim(); });
+      if (hang.indexOf(TEN_COT_FILE.thu) !== -1 && hang.indexOf(TEN_COT_FILE.baiday) !== -1) {
+        hangTieuDe = i;
+        break;
+      }
+    }
+    if (hangTieuDe === -1) {
+      return { loi: 'Không tìm thấy dòng tiêu đề phù hợp trong file (thiếu cột "Thứ" hoặc "Bài dạy").' };
+    }
+
+    const tieuDe = rows[hangTieuDe].map(function (x) { return String(x || '').trim(); });
+    const idx = {};
+    Object.keys(TEN_COT_FILE).forEach(function (key) {
+      idx[key] = tieuDe.indexOf(TEN_COT_FILE[key]);
+    });
+    if (idx.thu === -1 || idx.buoi === -1 || idx.tiet === -1 || idx.lop === -1 || idx.ppct === -1 || idx.baiday === -1) {
+      return { loi: 'File thiếu 1 trong các cột bắt buộc: Thứ, Buổi học, Tiết học TKB, Lớp học, Tiết theo PPCT, Bài dạy.' };
+    }
+    if (idx.monhoc === -1) {
+      return { loi: 'File thiếu cột "Môn học" nên không thể lọc riêng tiết Tin học.' };
+    }
+
+    const danhSach = [];
+    for (let i = hangTieuDe + 1; i < rows.length; i++) {
+      const r = rows[i];
+      const baiDay = String(r[idx.baiday] || '').trim();
+      if (!baiDay) continue; // dòng trống hoặc không có tiết dạy -> bỏ qua
+
+      const monHoc = String(r[idx.monhoc] || '').trim();
+      if (monHoc.toLowerCase() !== MON_HOC_CAN_LOC.toLowerCase()) continue; // chỉ lấy tiết Tin học
+
+      const thuTho = String(r[idx.thu] || '').split('\n')[0];
+      const mThu = thuTho.match(/(\d)/);
+      const tiet = String(r[idx.tiet] || '').trim();
+
+      if (!mThu || DANH_SACH_THU.indexOf(Number(mThu[1])) === -1) continue;
+      if (DANH_SACH_TIET.indexOf(Number(tiet)) === -1) continue;
+
+      danhSach.push({
+        thu: mThu[1],
+        tiet: tiet,
+        buoi: String(r[idx.buoi] || '').trim(),
+        lop: String(r[idx.lop] || '').trim(),
+        ppct: String(r[idx.ppct] || '').trim(),
+        baiday: baiDay,
+        ghiChu: idx.ghichu !== -1 ? String(r[idx.ghichu] || '').trim() : ''
+      });
+    }
+
+    if (danhSach.length === 0) {
+      return { loi: 'Không tìm thấy tiết dạy môn Tin học nào có nội dung trong file.' };
+    }
+    return { danhSach: danhSach };
+  }
+
+  function guiDangKyCaTuan() {
+    const msg = document.getElementById('formMsg');
+    const ketQuaList = document.getElementById('ketQuaList');
+    ketQuaList.innerHTML = '';
+    msg.className = 'msg';
+
+    const tuan = document.getElementById('fTuan').value.trim();
+    const phongDangKy = document.getElementById('fPhong') ? document.getElementById('fPhong').value : '';
+    const phongDangDung = PHIEN.phongCoDinh || Number(phongDangKy);
+
+    const danhSachTiet = [];
+    let thieuTruong = false;
+
+    document.querySelectorAll('#thanBang tr').forEach(function (tr) {
+      const lop = tr.querySelector('.f-lop').value.trim();
+      if (!lop) return; // dòng không đăng ký -> bỏ qua
+
+      const tenBaiDay = tr.querySelector('.f-baiday').value.trim();
+      if (!tenBaiDay) thieuTruong = true;
+
+      danhSachTiet.push({
+        thu: tr.getAttribute('data-thu'),
+        tiet: tr.getAttribute('data-tiet'),
+        buoi: tr.querySelector('.f-buoi').value,
+        lop: lop,
+        tietPPCT: tr.querySelector('.f-ppct').value.trim(),
+        soMay: tr.querySelector('.f-somay').value,
+        tenBaiDay: tenBaiDay,
+        ghiChu: tr.querySelector('.f-ghichu').value.trim()
+      });
+    });
+
+    if (danhSachTiet.length === 0) {
+      msg.className = 'msg err';
+      msg.textContent = 'Bạn chưa điền tiết nào. Hãy nhập ít nhất mục Lớp ở dòng muốn đăng ký.';
+      return;
+    }
+    if (thieuTruong) {
+      msg.className = 'msg err';
+      msg.textContent = 'Có dòng đã nhập Lớp nhưng còn thiếu Tên bài dạy. Vui lòng bổ sung.';
+      return;
+    }
+
+    const payload = {
+      hoTen: PHIEN.hoTen,
+      matKhau: PHIEN.matKhau,
+      phongDangKy: phongDangKy,
+      tuan: tuan,
+      danhSachTiet: danhSachTiet
+    };
+
+    document.getElementById('btnDangKy').disabled = true;
+    document.getElementById('btnDangKy').textContent = 'Đang xử lý...';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        document.getElementById('btnDangKy').disabled = false;
+        document.getElementById('btnDangKy').textContent = 'Đăng ký các tiết đã chọn';
+
+        const soLuong = res.ketQua.length;
+        const soThanhCong = res.ketQua.filter(function (r) { return r.thanhCong; }).length;
+
+        if (res.thanhCong) {
+          msg.className = 'msg ok';
+          msg.textContent = 'Đăng ký thành công toàn bộ ' + soThanhCong + ' tiết!';
+        } else {
+          msg.className = 'msg err';
+          msg.textContent = 'Đăng ký được ' + soThanhCong + '/' + soLuong + ' tiết. Xem chi tiết các tiết bị từ chối bên dưới.';
+        }
+
+        let html = '';
+        res.ketQua.forEach(function (r) {
+          const lop = 'Thứ ' + r.thu + ' - Tiết ' + r.tiet;
+          if (r.thanhCong) {
+            html += '<div class="dong-ok">✔ ' + lop + ': ' + r.thongBao + '</div>';
+          } else {
+            html += '<div class="dong-loi">✘ ' + lop + ': ' + r.thongBao + '</div>';
+          }
+        });
+        ketQuaList.innerHTML = html;
+
+        // Tự động chuyển sang tab "Xem lịch / Tình trạng máy" của phòng vừa
+        // đăng ký, để GV có thể nhập ngay Tình trạng đầu giờ / cuối giờ.
+        setTimeout(function () {
+          chuyenTab('lich');
+          document.getElementById('lichTuanInput').value = tuan;
+          if (!PHIEN.phongCoDinh) document.getElementById('lichPhongSelect').value = phongDangDung;
+          xemLichTuan(phongDangDung, tuan);
+        }, 1200);
+      })
+      .withFailureHandler(function (err) {
+        document.getElementById('btnDangKy').disabled = false;
+        document.getElementById('btnDangKy').textContent = 'Đăng ký các tiết đã chọn';
+        msg.className = 'msg err';
+        msg.textContent = 'Lỗi hệ thống: ' + err.message;
+      })
+      .dangKyNhieuTiet(payload);
+  }
+
+  // ===================== XEM LỊCH TUẦN + TÌNH TRẠNG MÁY =====================
+  let PHONG_DANG_XEM = null;
+  let TUAN_DANG_XEM = null;
+
+  // Đọc lựa chọn Tuần (và Phòng nếu là GV khác) trên tab Xem lịch rồi tải dữ liệu.
+  function taiLichTheoLuaChon() {
+    const tuan = document.getElementById('lichTuanInput').value.trim();
+    if (!tuan) {
+      document.getElementById('lichMsg').className = 'msg err';
+      document.getElementById('lichMsg').textContent = 'Vui lòng nhập Tuần muốn xem.';
+      return;
+    }
+    const phong = PHIEN.phongCoDinh || Number(document.getElementById('lichPhongSelect').value);
+    xemLichTuan(phong, tuan);
+  }
+
+  function xemLichTuan(phong, tuan) {
+    PHONG_DANG_XEM = phong;
+    TUAN_DANG_XEM = tuan;
+
+    document.getElementById('lichTieuDe').textContent =
+      'Lịch đăng ký Phòng Tin học số ' + phong + ' — Tuần ' + tuan;
+    document.getElementById('lichMsg').className = 'msg';
+
+    google.script.run
+      .withSuccessHandler(function (danhSach) {
+        taoBangLich(danhSach);
+      })
+      .withFailureHandler(function (err) {
+        document.getElementById('lichMsg').className = 'msg err';
+        document.getElementById('lichMsg').textContent = 'Lỗi khi tải lịch: ' + err.message;
+      })
+      .layLichTuanDayDu(phong, tuan);
+  }
+
+  function taoBangLich(danhSach) {
+    const tbody = document.getElementById('thanBangLich');
+    let html = '';
+    let thuTruoc = null;
+    let dongTrongThu = 0;
+
+    // Đếm số dòng liên tiếp cùng 1 Thứ để gộp ô (luôn 5 vì bảng cố định 6x5)
+    danhSach.forEach(function (r, i) {
+      const laDauNhom = (r.tiet === DANH_SACH_TIET[0]);
+      const coDangKy = String(r.lop || '').trim() !== '';
+
+      html += '<tr data-thu="' + r.thu + '" data-tiet="' + r.tiet + '"' + (coDangKy ? '' : ' class="dong-trong"') + '>';
+      if (laDauNhom) {
+        html += '<td class="thu-cell" rowspan="' + DANH_SACH_TIET.length + '">' + r.thu + '</td>';
+      }
+      html += '<td class="tiet-cell">' + r.tiet + '</td>';
+
+      if (coDangKy) {
+        html += '<td class="chi-doc">' + (r.buoi || '') + '</td>';
+        html += '<td class="chi-doc">' + (r.lop || '') + '</td>';
+        html += '<td class="chi-doc">' + (r.tietPPCT || '') + '</td>';
+        html += '<td class="chi-doc">' + (r.soMay || '') + '</td>';
+        html += '<td class="chi-doc" style="text-align:left;">' + (r.tenBaiDay || '') + '</td>';
+        html += '<td class="col-tinhtrang"><input class="f-ttdau" type="text" value="' + escapeHtmlThuocTinh_(r.ttDau) + '" placeholder="Để trống = Tốt"></td>';
+        html += '<td class="col-tinhtrang"><input class="f-ttcuoi" type="text" value="' + escapeHtmlThuocTinh_(r.ttCuoi) + '" placeholder="Để trống = Tốt"></td>';
+        html += '<td class="chi-doc">' + (r.gv || '') + '</td>';
+        html += '<td class="chi-doc">' + (r.ghiChu || '') + '</td>';
+      } else {
+        html += '<td class="chi-doc" colspan="8">—</td>';
+      }
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  function escapeHtmlThuocTinh_(s) {
+    return String(s || '').replace(/"/g, '&quot;');
+  }
+
+  function luuTinhTrang() {
+    const msg = document.getElementById('lichMsg');
+    const danhSach = [];
+
+    document.querySelectorAll('#thanBangLich tr:not(.dong-trong)').forEach(function (tr) {
+      const oTtDau = tr.querySelector('.f-ttdau');
+      const oTtCuoi = tr.querySelector('.f-ttcuoi');
+      if (!oTtDau) return; // dòng trống không có ô nhập
+      danhSach.push({
+        thu: tr.getAttribute('data-thu'),
+        tiet: tr.getAttribute('data-tiet'),
+        ttDau: oTtDau.value.trim(),
+        ttCuoi: oTtCuoi.value.trim()
+      });
+    });
+
+    if (danhSach.length === 0) {
+      msg.className = 'msg err';
+      msg.textContent = 'Tuần này chưa có tiết nào được đăng ký.';
+      return;
+    }
+
+    const payload = {
+      hoTen: PHIEN.hoTen, matKhau: PHIEN.matKhau,
+      phong: PHONG_DANG_XEM, tuan: TUAN_DANG_XEM, danhSach: danhSach
+    };
+
+    document.getElementById('btnLuuTinhTrang').disabled = true;
+    document.getElementById('btnLuuTinhTrang').textContent = 'Đang lưu...';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        document.getElementById('btnLuuTinhTrang').disabled = false;
+        document.getElementById('btnLuuTinhTrang').textContent = 'Lưu tình trạng đầu giờ / cuối giờ';
+        msg.className = res.thanhCong ? 'msg ok' : 'msg err';
+        msg.textContent = res.thongBao;
+      })
+      .withFailureHandler(function (err) {
+        document.getElementById('btnLuuTinhTrang').disabled = false;
+        document.getElementById('btnLuuTinhTrang').textContent = 'Lưu tình trạng đầu giờ / cuối giờ';
+        msg.className = 'msg err';
+        msg.textContent = 'Lỗi hệ thống: ' + err.message;
+      })
+      .capNhatTinhTrang(payload);
+  }
+</script>
+</body>
+</html>
