@@ -6,11 +6,12 @@
 <title>Phiếu đăng ký nguyện vọng lớp 10 - THPT Chu Văn An</title>
 <style>
   :root {
-    --teal-900: #0d3f3a;
-    --teal-800: #12524c;
-    --teal-700: #1a655e;
-    --teal-accent: #5c8f88;
-    --teal-accent-hover: #47756f;
+    --teal-900: #0c5c58;
+    --teal-800: #0d6f6a;
+    --teal-700: #109c93;
+    --teal-header: #0e8c84;
+    --teal-accent: #4f9089;
+    --teal-accent-hover: #3d7871;
     --bg: #f3f6f5;
     --card-bg: #ffffff;
     --card-border: #e2e8e6;
@@ -44,49 +45,49 @@
 
   /* ---------- HEADER ---------- */
   .site-header {
-    background: linear-gradient(135deg, var(--teal-700), var(--teal-900));
-    padding: 30px 20px 34px;
-    text-align: center;
+    background: var(--teal-header);
+    padding: 16px 22px 18px;
+    text-align: left;
   }
   .site-header .eyebrow {
-    color: rgba(255,255,255,0.75);
-    font-size: 12.5px;
+    color: rgba(255,255,255,0.8);
+    font-size: 11.5px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 3px;
   }
   .header-brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    max-width: 620px;
-    margin: 0 auto 14px;
+    justify-content: flex-start;
+    gap: 12px;
+    max-width: 680px;
+    margin: 0 auto 10px;
     text-align: left;
   }
   .header-logo {
     flex: 0 0 auto;
-    width: 62px;
-    height: 62px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   }
   @media (max-width: 480px) {
-    .header-brand { flex-direction: column; text-align: center; gap: 10px; }
+    .header-brand { gap: 10px; }
   }
   .site-header h1 {
     color: #fff;
-    font-size: 21px;
+    font-size: 17px;
     font-weight: 700;
-    margin: 0 0 10px;
-    letter-spacing: 0.3px;
+    margin: 0;
+    letter-spacing: 0.2px;
   }
   .site-header .hint-list {
     color: rgba(255,255,255,0.88);
-    font-size: 13px;
-    max-width: 620px;
+    font-size: 12.5px;
+    max-width: 680px;
     margin: 0 auto;
     text-align: left;
   }
@@ -259,7 +260,7 @@
 
   /* ---------- FOOTER ---------- */
   .site-footer {
-    background: var(--teal-900);
+    background: var(--teal-800);
     color: rgba(255,255,255,0.85);
     text-align: center;
     font-size: 12.5px;
@@ -308,7 +309,7 @@
           <input type="text" id="ngaySinhInput" placeholder="Định dạng: DD/MM/YYYY (Ví dụ: 27/01/2011)">
         </div>
 
-        <div id="errorMessageCheck" class="message error"></div>
+        <div id="errorMessageCheck" class="message error" style="display: none;"></div>
 
         <button type="button" id="btnCheck" class="btn-block" onclick="checkSBD()">KIỂM TRA THÔNG TIN</button>
       </div>
@@ -430,7 +431,7 @@
             </select>
           </div>
 
-          <div id="errorMessageForm" class="message error"></div>
+          <div id="errorMessageForm" class="message error" style="display: none;"></div>
 
           <div class="actions-row">
             <button type="button" class="btn-secondary" onclick="backToCheck()">QUAY LẠI</button>
