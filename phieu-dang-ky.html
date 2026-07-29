@@ -43,6 +43,22 @@
     font-size: 13px;
   }
 
+  /* ---------- KHÔNG PING ĐƯỢC WEB APP - BANNER CHẨN ĐOÁN LỖI KẾT NỐI ---------- */
+  #connWarning {
+    display: none;
+    background: #fbe9e9;
+    color: #7a1f1f;
+    border-bottom: 1px solid #f3c7c7;
+    padding: 12px 16px;
+    font-size: 13px;
+    text-align: left;
+  }
+  #connWarning .cw-inner { max-width: 700px; margin: 0 auto; }
+  #connWarning b { display: block; margin-bottom: 4px; }
+  #connWarning ol { margin: 6px 0 0; padding-left: 20px; }
+  #connWarning li { margin-bottom: 2px; }
+  #connWarning code { background: #f3d9d9; padding: 1px 5px; border-radius: 4px; }
+
   /* ---------- HEADER ---------- */
   .site-header {
     background: var(--teal-header);
@@ -273,6 +289,23 @@
   <!-- Hiện lên nếu quản trị viên QUÊN dán URL Web App vào WEBAPP_URL bên dưới -->
   <div id="configWarning">
     ⚠️ Trang chưa được cấu hình: vui lòng mở file HTML này và điền <code>WEBAPP_URL</code> bằng đúng URL Web App đã Deploy từ Apps Script.
+  </div>
+
+  <!-- Hiện lên nếu gọi thử tới WEBAPP_URL mà không nhận được phản hồi (lỗi
+       "Failed to fetch") - thường KHÔNG phải lỗi ở trang này, mà do cấu hình
+       Deployment bên Apps Script. Chỉ dành cho người quản trị đọc để tự sửa,
+       KHÔNG chặn học sinh dùng tiếp (vẫn để họ thử bấm nút, phòng khi ping
+       lỗi do mạng chập chờn nhất thời). -->
+  <div id="connWarning">
+    <div class="cw-inner">
+      <b>⚠️ Không kết nối được tới máy chủ Google Sheets (WEBAPP_URL). Vui lòng kiểm tra:</b>
+      <ol>
+        <li>Deployment trên Apps Script đã chọn <b>"Who has access: Anyone"</b> chưa (không phải "Anyone with Google account")?</li>
+        <li>Đã <b>tạo deployment MỚI</b> (hoặc bấm "Manage deployments" &gt; sửa deployment cũ) sau lần sửa code <code>.gs</code> gần nhất chưa? Sửa code mà không deploy lại thì URL cũ vẫn chạy code CŨ.</li>
+        <li><code>WEBAPP_URL</code> trong file HTML này có đúng dạng <code>.../exec</code> (không phải <code>/dev</code>) và không thừa/thiếu ký tự khi copy không?</li>
+        <li>Thử mở thẳng URL đó trên trình duyệt kèm <code>?action=ping</code> ở cuối (VD <code>...exec?action=ping</code>) - nếu hiện chữ JSON <code>{"success":true,...}</code> là server ổn, lỗi nằm ở CORS khi gọi từ tên miền ngoài; nếu không hiện được (trang lỗi/màn hình đăng nhập Google) là do Deployment sai quyền truy cập.</li>
+      </ol>
+    </div>
   </div>
 
   <div class="site-header">
@@ -507,6 +540,8 @@
       return;
     }
 
+    kiemTraKetNoi();
+
     var savedSBD = localStorage.getItem('cva_saved_sbd');
     var savedBirth = localStorage.getItem('cva_saved_birth');
     if (savedSBD && savedBirth && savedSBD.trim() !== "" && savedBirth.trim() !== "") {
@@ -521,6 +556,25 @@
       localStorage.clear();
     }
   };
+
+  /**
+   * Gọi thử action "ping" (không đụng Sheet) ngay khi trang vừa tải, để phát
+   * hiện SỚM lỗi cấu hình Deployment (quyền truy cập sai, quên deploy lại,
+   * URL sai...) và hiện banner giải thích rõ nguyên nhân + cách kiểm tra -
+   * thay vì để học sinh chỉ thấy 1 alert "Failed to fetch" mơ hồ sau khi đã
+   * gõ xong cả SBD lẫn Ngày sinh. KHÔNG chặn form dù ping lỗi (có thể chỉ do
+   * mạng chập chờn nhất thời) - chỉ hiện cảnh báo để người quản trị biết mà
+   * kiểm tra lại Deployment.
+   */
+  function kiemTraKetNoi() {
+    goiApi("ping", {})
+      .then(function (res) {
+        if (!res || res.success !== true) throw new Error("Phản hồi không hợp lệ");
+      })
+      .catch(function () {
+        document.getElementById('connWarning').style.display = 'block';
+      });
+  }
 
   function checkSBD() {
     var sbd = document.getElementById('sbdInput').value.trim();
@@ -661,8 +715,11 @@
   }
 
   function XuLyLoiKetNoi(error) {
-    var msg = "❌ Lỗi kết nối máy chủ: " + (error && error.message ? error.message : error)
-      + "\nVui lòng kiểm tra kết nối mạng, làm mới trang (F5), hoặc thử lại sau ít phút.";
+    document.getElementById('connWarning').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    var msg = "❌ Không kết nối được máy chủ (" + (error && error.message ? error.message : error) + ").\n\n"
+      + "Đây thường KHÔNG phải lỗi do bạn nhập sai thông tin, mà do trang chưa kết nối được tới hệ thống. "
+      + "Vui lòng thử làm mới trang (F5) hoặc thử lại sau ít phút. Nếu vẫn lỗi, báo nhà trường kiểm tra lại cấu hình hệ thống (xem ghi chú màu đỏ phía trên đầu trang).";
     alert(msg);
   }
 
