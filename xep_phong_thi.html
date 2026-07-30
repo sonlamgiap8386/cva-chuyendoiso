@@ -1,0 +1,641 @@
+<!--
+  ============================================================================
+  TrangChinh_HostNgoai.html
+  BẢN DÀNH RIÊNG ĐỂ TỰ HOST TRÊN WEBSITE KHÁC (website riêng của trường) - KHÔNG
+  chạy trong khung HtmlService của Apps Script. Giao diện và toàn bộ nghiệp vụ
+  giống hệt TrangChinh.html - CHỈ khác cách gọi server: dùng fetch() qua cổng API
+  (Api.gs, hàm doPost) thay vì google.script.run (chỉ hoạt động khi trang được
+  chính Apps Script phục vụ).
+
+  CÁCH DÙNG:
+  1. Trong Apps Script Editor: Deploy > Manage deployments > New version, đảm bảo
+     "Execute as: Me" và "Who has access: Anyone" - rồi copy URL dạng
+     https://script.google.com/macros/s/XXXXXXXX/exec
+  2. Dán URL đó vào biến DIA_CHI_API trong <script> bên dưới (tìm dòng có ghi
+     "THAY BẰNG URL WEB APP THẬT CỦA BẠN").
+  3. Upload file HTML này lên website riêng của trường (hosting bất kỳ, kể cả
+     hosting tĩnh miễn phí) - không cần đặt tên "TrangChinh" nữa, đặt tên gì tùy ý
+     (vd "dangky.html").
+  4. (Tùy chọn) Đổi tên trường ở biến TEN_TRUONG bên dưới cho khớp.
+
+  LƯU Ý VỀ CORS: Web App của Apps Script (đường dẫn .../exec) tự động cho phép
+  gọi cross-origin (từ domain khác) đối với các yêu cầu "đơn giản" (simple
+  request - không có header tùy chỉnh, Content-Type mặc định text/plain). File
+  này đã tuân theo đúng quy tắc đó. Nếu vẫn gặp lỗi CORS trên console trình
+  duyệt, kiểm tra lại bước 1 (đúng "Anyone" + đã tạo phiên bản triển khai MỚI
+  sau khi thêm Api.gs).
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cổng thông tin khảo sát chất lượng</title>
+  <style>
+    :root {
+      --primary: #1f7a70;
+      --primary-dark: #14544d;
+      --primary-light: #e6f2f0;
+      --success: #1e8e3e;
+      --error: #d93025;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #dde3e2;
+      --bg: #f4f7f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      color: var(--text);
+    }
+    .khung-ngoai {
+      max-width: 720px;
+      margin: 24px auto;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    .dai-mau {
+      background: var(--primary);
+      color: #fff;
+      text-align: center;
+      padding: 18px 20px;
+    }
+    .dai-mau .ten-truong { font-size: 12px; letter-spacing: 0.5px; opacity: 0.9; margin-bottom: 4px; }
+    .dai-mau h1 { font-size: 19px; margin: 0 0 4px; font-weight: 700; }
+    .dai-mau .phu-de { font-size: 12.5px; opacity: 0.9; }
+
+    .noi-dung { padding: 22px 22px 6px; }
+
+    .the {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .the-tieu-de {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #fafbfb;
+      border-bottom: 1px solid var(--border);
+    }
+    .so-buoc {
+      flex-shrink: 0;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+    }
+    .the-tieu-de-chu h2 { margin: 0; font-size: 14.5px; font-weight: 700; }
+    .the-tieu-de-chu p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+    .the-than { padding: 16px; }
+
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    input[type=text], input[type=password], select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; margin-bottom: 14px; background: #fff;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+    button {
+      background: var(--primary); color: #fff; border: none; border-radius: 8px;
+      padding: 10px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    }
+    button.full { width: 100%; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.phu {
+      background: #fff; color: var(--primary); border: 1px solid var(--primary);
+    }
+
+    .msg { font-size: 12.5px; margin: 4px 0 10px; min-height: 15px; }
+    .msg.error { color: var(--error); }
+    .msg.success { color: var(--success); }
+    .hidden { display: none; }
+
+    .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 12.5px; color: var(--muted); }
+    .info-row a { cursor: pointer; color: var(--primary); font-weight: 600; }
+
+    .khu-tha-file {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 20px;
+      text-align: center; background: #fbfcfc; margin-bottom: 14px;
+    }
+    .khu-tha-file .tieu { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+    .khu-tha-file .phu { font-size: 11.5px; color: var(--muted); }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab-btn {
+      flex: 1; background: #fff; color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
+    th, td { border: 1px solid var(--border); padding: 8px 9px; text-align: left; }
+    th { background: var(--primary-light); font-weight: 700; color: var(--primary-dark); }
+    td.ten-hs { white-space: nowrap; }
+    td input { margin: 0; padding: 7px; width: 100%; font-size: 13.5px; text-align: center; }
+    .bang-cuon { max-height: 480px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+    .th-chon-nhanh { font-size: 10px; font-weight: 400; color: var(--muted); display: block; margin-top: 2px; }
+    .ghi-chu-nho { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+    .dai-cuoi {
+      background: var(--primary-dark); color: #fff; text-align: center;
+      font-size: 11px; padding: 10px; opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="khung-ngoai">
+    <div class="dai-mau">
+      <div class="ten-truong" id="tenTruongHienThi"></div>
+      <h1>CỔNG THÔNG TIN KHẢO SÁT CHẤT LƯỢNG</h1>
+      <div class="phu-de">1. Đăng nhập theo vai trò (GVCN lớp / GV bộ môn) &nbsp;·&nbsp; 2. Thực hiện đúng công việc của bạn</div>
+    </div>
+
+    <div class="noi-dung">
+
+      <!-- BƯỚC 1: ĐĂNG NHẬP -->
+      <div class="the" id="the-dang-nhap">
+        <div class="the-tieu-de">
+          <div class="so-buoc">1</div>
+          <div class="the-tieu-de-chu">
+            <h2>Đăng nhập</h2>
+            <p>GVCN dùng "GVCN {Lớp}" (vd GVCN 10A1) · GV bộ môn dùng "GV {Môn}" (vd GV Văn)</p>
+          </div>
+        </div>
+        <div class="the-than">
+          <label>Tên đăng nhập</label>
+          <input type="text" id="tenDangNhap" placeholder="Vd: GVCN 10A1 hoặc GV Văn">
+
+          <label>Mật khẩu</label>
+          <input type="password" id="matKhau">
+
+          <button class="full" onclick="dangNhap()" id="btnDangNhap">Đăng nhập</button>
+          <div id="msgDangNhap" class="msg"></div>
+        </div>
+      </div>
+
+      <!-- BƯỚC 2 (GVCN): CHỌN MÔN CHO CẢ LỚP -->
+      <div class="the hidden" id="the-gvcn">
+        <div class="the-tieu-de">
+          <div class="so-buoc">2</div>
+          <div class="the-tieu-de-chu">
+            <h2>Đăng ký môn thi - Lớp <span id="lopHienThi"></span></h2>
+            <p id="ghiChuRangBuoc"></p>
+          </div>
+        </div>
+        <div class="the-than">
+          <div class="info-row"><span></span><a onclick="dangXuat()">Đăng xuất</a></div>
+          <div class="bang-cuon">
+            <table id="bangDangKy">
+              <thead><tr id="dongHeaderGVCN"><th>Học sinh</th></tr></thead>
+              <tbody id="thanBangGVCN"></tbody>
+            </table>
+          </div>
+          <button class="full" onclick="luuDangKyLop()" id="btnLuuDangKy">Lưu đăng ký cho cả lớp</button>
+          <div id="msgLuuDangKy" class="msg"></div>
+        </div>
+      </div>
+
+      <!-- BƯỚC 2 (GV BỘ MÔN): NHẬP ĐIỂM -->
+      <div class="the hidden" id="the-gv">
+        <div class="the-tieu-de">
+          <div class="so-buoc">2</div>
+          <div class="the-tieu-de-chu">
+            <h2>Nhập điểm - Môn <span id="monDayHienThi"></span></h2>
+            <p>Chọn nhóm rồi nhập điểm trực tiếp, hoặc tải file mẫu về điền offline</p>
+          </div>
+        </div>
+        <div class="the-than">
+          <div class="info-row"><span></span><a onclick="dangXuat()">Đăng xuất</a></div>
+
+          <label>Chọn nhóm (Lớp / Phòng thi)</label>
+          <select id="chonNhom" onchange="doiNhom()">
+            <option value="">-- Tất cả --</option>
+          </select>
+
+          <div class="tabs">
+            <button class="tab-btn active" id="tabTrucTiep" onclick="chonTab('tructiep')">Nhập trực tiếp</button>
+            <button class="tab-btn" id="tabFile" onclick="chonTab('file')">Tải file lên</button>
+          </div>
+
+          <div id="noidung-tructiep">
+            <div class="bang-cuon">
+              <table>
+                <thead><tr><th>SBD</th><th>Họ và đệm</th><th>Tên</th><th>Lớp</th><th>Điểm</th></tr></thead>
+                <tbody id="bangDiem"></tbody>
+              </table>
+            </div>
+            <button class="full" onclick="luuDiem()" id="btnLuuDiem">Lưu điểm</button>
+            <div id="msgLuuDiem" class="msg"></div>
+          </div>
+
+          <div id="noidung-file" class="hidden">
+            <div class="khu-tha-file">
+              <div class="tieu">📥 Tải file mẫu (theo nhóm đang chọn)</div>
+              <div class="phu" style="margin-bottom:10px;">Bấm để tải, điền điểm rồi tải lại lên bên dưới</div>
+              <button class="phu" onclick="taiFileMau()">Tải file mẫu</button>
+            </div>
+            <div class="khu-tha-file">
+              <input type="file" id="fileInput" accept=".xlsx">
+              <div class="phu" style="margin-top:8px">Chọn file .xlsx đã điền điểm theo đúng file mẫu</div>
+            </div>
+            <button class="full" onclick="taiLenFile()" id="btnTaiLen">Tải lên và cập nhật điểm</button>
+            <div id="msgFile" class="msg"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="dai-cuoi">Hệ thống quản lý khảo sát chất lượng &nbsp;·&nbsp; <span id="tenTruongCuoiTrang"></span></div>
+  </div>
+
+  <script>
+    // ========================================================================
+    // CẤU HÌNH - CHỈNH 2 GIÁ TRỊ DƯỚI ĐÂY CHO ĐÚNG TRƯỜNG BẠN
+    // ========================================================================
+
+    // THAY BẰNG URL WEB APP THẬT CỦA BẠN (Deploy > Manage deployments > lấy URL
+    // dạng https://script.google.com/macros/s/XXXXXXXX/exec)
+    const DIA_CHI_API = 'https://script.google.com/a/macros/thptlucngan1.edu.vn/s/AKfycbzwNKM9Tcl1cwr-TzrFYh8k8meAFioDIatn2iByVvVyQC3S0GoUiaqVsldGFf97n_uSEQ/exec';
+
+    const TEN_TRUONG = 'TRƯỜNG THPT CHU VĂN AN'; // Đổi tên trường ở đây nếu cần
+
+    // ========================================================================
+
+    /**
+     * Gọi 1 hàm server đã được whitelist trong Api.gs, qua fetch() POST tới
+     * Web App. KHÔNG set header 'Content-Type' thủ công (để trình duyệt tự dùng
+     * 'text/plain' mặc định) - tránh kích hoạt preflight OPTIONS mà Apps Script
+     * Web App không xử lý được, gây lỗi CORS.
+     * @param {string} tenHam  tên hàm (phải khớp danh sách trắng trong Api.gs)
+     * @param {Array}  thamSo  mảng tham số truyền vào hàm đó, ĐÚNG THỨ TỰ
+     * @return {Promise<Object>} promise trả về object JSON server phản hồi
+     */
+    function goiApi(tenHam, thamSo) {
+      if (!DIA_CHI_API || DIA_CHI_API.indexOf('DAN_ID_TRIEN_KHAI_CUA_BAN') !== -1) {
+        return Promise.reject(new Error('Chưa cấu hình DIA_CHI_API - xem hướng dẫn ở đầu file HTML này.'));
+      }
+      return fetch(DIA_CHI_API, {
+        method: 'POST',
+        body: JSON.stringify({ action: tenHam, args: thamSo || [] })
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error('Máy chủ phản hồi lỗi HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (ketQua) {
+          // Các hàm nghiệp vụ (xacThucChung, luuDiemTrucTiep...) tự trả về
+          // { success: false, message } khi lỗi NGHIỆP VỤ - KHÔNG coi đó là lỗi
+          // fetch, để .then() ở nơi gọi tự xử lý res.success như code gốc.
+          return ketQua;
+        })
+        .catch(function (err) {
+          // Lỗi MẠNG/KẾT NỐI (không phải lỗi nghiệp vụ) - ném lại để .catch() ở
+          // nơi gọi xử lý giống hệt withFailureHandler() của google.script.run cũ.
+          throw new Error(err.message || 'Không thể kết nối tới máy chủ. Kiểm tra DIA_CHI_API và kết nối mạng.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.title = TEN_TRUONG + ' - Cổng thông tin khảo sát';
+      document.getElementById('tenTruongHienThi').textContent = TEN_TRUONG;
+      document.getElementById('tenTruongCuoiTrang').textContent = TEN_TRUONG;
+    });
+
+    let phien = null; // { vaiTro, hoTen, lop?, monDay? } - chỉ để HIỂN THỊ trên giao diện
+    let token = null; // token phiên đăng nhập (Auth.gs) - BẮT BUỘC gửi kèm mọi lời gọi ghi/đọc dữ liệu
+    let MON_LIST = [], MON_TU_CHON = [], MAX_MON = 4, MAX_MON_TU_CHON = 2;
+
+    function hienThiThongBao(id, loai, noiDung) {
+      const el = document.getElementById(id);
+      el.className = 'msg ' + loai;
+      el.textContent = noiDung;
+    }
+
+    // ==== ĐĂNG NHẬP CHUNG ====
+    function dangNhap() {
+      const tenDangNhap = document.getElementById('tenDangNhap').value.trim();
+      const matKhau = document.getElementById('matKhau').value;
+      if (!tenDangNhap || !matKhau) {
+        hienThiThongBao('msgDangNhap', 'error', 'Vui lòng nhập đủ tên đăng nhập và mật khẩu.');
+        return;
+      }
+
+      const btn = document.getElementById('btnDangNhap');
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      goiApi('xacThucChung', [tenDangNhap, matKhau])
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+          if (!res.success) {
+            hienThiThongBao('msgDangNhap', 'error', res.message);
+            return;
+          }
+          phien = res;
+          token = res.token;
+          document.getElementById('the-dang-nhap').classList.add('hidden');
+
+          if (res.vaiTro === 'gvcn') {
+            document.getElementById('the-gvcn').classList.remove('hidden');
+            document.getElementById('lopHienThi').textContent = res.lop;
+            taiDanhSachLop();
+          } else {
+            document.getElementById('the-gv').classList.remove('hidden');
+            document.getElementById('monDayHienThi').textContent = res.monDay;
+            taiDanhSachNhom();
+            taiBangDiem();
+          }
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+          hienThiThongBao('msgDangNhap', 'error', 'Lỗi hệ thống: ' + err.message);
+        });
+    }
+
+    function dangXuat() {
+      if (token) { goiApi('huyPhienDangNhap', [token]).catch(function () {}); }
+      phien = null;
+      token = null;
+      document.getElementById('the-gvcn').classList.add('hidden');
+      document.getElementById('the-gv').classList.add('hidden');
+      document.getElementById('the-dang-nhap').classList.remove('hidden');
+      document.getElementById('matKhau').value = '';
+    }
+
+    // ==== PHẦN GVCN: ĐĂNG KÝ MÔN CHO CẢ LỚP ====
+    function taiDanhSachLop() {
+      const thanBang = document.getElementById('thanBangGVCN');
+      thanBang.innerHTML = '<tr><td>Đang tải...</td></tr>';
+
+      goiApi('layDanhSachHocSinhLop', [token])
+        .then(function (res) {
+          if (!res.success) {
+            thanBang.innerHTML = '<tr><td>' + res.message + '</td></tr>';
+            return;
+          }
+          MON_LIST = res.monList;
+          MON_TU_CHON = res.monTuChon;
+          MAX_MON = res.maxMon;
+          MAX_MON_TU_CHON = res.maxMonTuChon;
+
+          document.getElementById('ghiChuRangBuoc').textContent =
+            'Mỗi học sinh tối đa ' + MAX_MON + ' môn, trong đó tối đa ' + MAX_MON_TU_CHON +
+            ' môn thuộc nhóm tự chọn (' + MON_TU_CHON.join(', ') + ').';
+
+          xayDungBangGVCN(res.danhSach);
+        })
+        .catch(function (err) {
+          thanBang.innerHTML = '<tr><td>Lỗi: ' + err.message + '</td></tr>';
+        });
+    }
+
+    function xayDungBangGVCN(danhSach) {
+      const dongHeader = document.getElementById('dongHeaderGVCN');
+      dongHeader.innerHTML = '<th>Học sinh</th>';
+      MON_LIST.forEach(mon => {
+        const th = document.createElement('th');
+        th.innerHTML = mon + '<span class="th-chon-nhanh"><input type="checkbox" onchange="chonNhanhCaLop(\'' + mon + '\', this.checked)"> cả lớp</span>';
+        dongHeader.appendChild(th);
+      });
+
+      const thanBang = document.getElementById('thanBangGVCN');
+      thanBang.innerHTML = '';
+      danhSach.forEach(hs => {
+        const tr = document.createElement('tr');
+        tr.dataset.dong = hs.dong;
+        let html = '<td class="ten-hs">' + hs.hoDem + ' ' + hs.ten + '</td>';
+        MON_LIST.forEach(mon => {
+          const daChon = hs.monDaChon.indexOf(mon) !== -1;
+          html += '<td><input type="checkbox" class="o-mon" data-mon="' + mon + '"' +
+            (daChon ? ' checked' : '') + ' onchange="gioiHanChonMonDong(this)"></td>';
+        });
+        tr.innerHTML = html;
+        thanBang.appendChild(tr);
+      });
+
+      document.querySelectorAll('#thanBangGVCN tr').forEach(tr => capNhatKhoaODong(tr));
+    }
+
+    function gioiHanChonMonDong(o) { capNhatKhoaODong(o.closest('tr')); }
+
+    function capNhatKhoaODong(tr) {
+      const oTatCa = tr.querySelectorAll('.o-mon');
+      const oDaTick = tr.querySelectorAll('.o-mon:checked');
+      const oTuChonDaTick = Array.from(oDaTick).filter(o => MON_TU_CHON.indexOf(o.dataset.mon) !== -1);
+      const dayTong = oDaTick.length >= MAX_MON;
+      const dayTuChon = oTuChonDaTick.length >= MAX_MON_TU_CHON;
+
+      oTatCa.forEach(o => {
+        if (o.checked) { o.disabled = false; return; }
+        const laTuChon = MON_TU_CHON.indexOf(o.dataset.mon) !== -1;
+        o.disabled = dayTong || (laTuChon && dayTuChon);
+      });
+    }
+
+    function chonNhanhCaLop(mon, batBuoc) {
+      document.querySelectorAll('#thanBangGVCN tr').forEach(tr => {
+        const o = tr.querySelector('.o-mon[data-mon="' + mon + '"]');
+        if (!o) return;
+        if (batBuoc) { if (!o.disabled) o.checked = true; } else { o.checked = false; }
+        capNhatKhoaODong(tr);
+      });
+    }
+
+    function luuDangKyLop() {
+      const rows = document.querySelectorAll('#thanBangGVCN tr[data-dong]');
+      const danhSachDangKy = [];
+      rows.forEach(tr => {
+        const monDaChon = Array.from(tr.querySelectorAll('.o-mon:checked')).map(o => o.dataset.mon);
+        danhSachDangKy.push({ dong: Number(tr.dataset.dong), monDaChon: monDaChon });
+      });
+
+      const btn = document.getElementById('btnLuuDangKy');
+      btn.disabled = true;
+      btn.textContent = 'Đang lưu...';
+
+      goiApi('luuDangKyCaLop', [token, danhSachDangKy])
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Lưu đăng ký cho cả lớp';
+          hienThiThongBao('msgLuuDangKy', res.success ? 'success' : 'error', res.message);
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Lưu đăng ký cho cả lớp';
+          hienThiThongBao('msgLuuDangKy', 'error', 'Lỗi hệ thống: ' + err.message);
+        });
+    }
+
+    // ==== PHẦN GV BỘ MÔN: NHẬP ĐIỂM ====
+    function chonTab(ten) {
+      document.getElementById('tabTrucTiep').classList.toggle('active', ten === 'tructiep');
+      document.getElementById('tabFile').classList.toggle('active', ten === 'file');
+      document.getElementById('noidung-tructiep').classList.toggle('hidden', ten !== 'tructiep');
+      document.getElementById('noidung-file').classList.toggle('hidden', ten !== 'file');
+    }
+
+    function taiDanhSachNhom() {
+      goiApi('layDanhSachNhom', [token])
+        .then(function (res) {
+          const select = document.getElementById('chonNhom');
+          select.innerHTML = '<option value="">-- Tất cả --</option>';
+          if (res.success) {
+            res.nhomList.forEach(n => {
+              const opt = document.createElement('option');
+              opt.value = n.nhan;
+              opt.textContent = n.nhan + ' (' + n.soLuong + ' hs)';
+              select.appendChild(opt);
+            });
+          }
+        })
+        .catch(function () { /* im lặng - danh sách nhóm trống là ổn, taiBangDiem sẽ báo lỗi rõ hơn */ });
+    }
+
+    function doiNhom() { taiBangDiem(); }
+
+    function taiBangDiem() {
+      const nhanChon = document.getElementById('chonNhom').value;
+      const tbody = document.getElementById('bangDiem');
+      tbody.innerHTML = '<tr><td colspan="5">Đang tải...</td></tr>';
+
+      goiApi('layDanhSachDeNhapDiem', [token, nhanChon || null])
+        .then(function (res) {
+          tbody.innerHTML = '';
+          if (!res.success) {
+            tbody.innerHTML = '<tr><td colspan="5">' + res.message + '</td></tr>';
+            return;
+          }
+          res.danhSach.forEach(hs => {
+            const tr = document.createElement('tr');
+            tr.dataset.dong = hs.dong;
+            tr.innerHTML =
+              '<td>' + hs.sbd + '</td>' +
+              '<td>' + hs.hoDem + '</td>' +
+              '<td>' + hs.ten + '</td>' +
+              '<td>' + hs.lop + '</td>' +
+              '<td><input type="text" inputmode="decimal" class="o-diem" ' +
+              'value="' + (hs.diem || '') + '" ' +
+              'onkeydown="xuLyPhimODiem(event, this)" onblur="chuanHoaDiem(this)"></td>';
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(function (err) {
+          tbody.innerHTML = '<tr><td colspan="5">Lỗi: ' + err.message + '</td></tr>';
+        });
+    }
+
+    function chuanHoaDiem(o) {
+      if (o.value.trim() === '') return;
+      let v = Number(o.value);
+      if (isNaN(v)) { o.value = ''; return; }
+      if (v < 0) v = 0;
+      if (v > 10) v = 10;
+      o.value = v;
+    }
+
+    function xuLyPhimODiem(evt, o) {
+      const phim = evt.key;
+      if (phim === 'Enter' || evt.keyCode === 13) {
+        evt.preventDefault();
+        chuanHoaDiem(o);
+        const tr = o.closest('tr');
+        const trTiepTheo = tr && tr.nextElementSibling;
+        if (trTiepTheo) {
+          const oTiepTheo = trTiepTheo.querySelector('.o-diem');
+          if (oTiepTheo) { oTiepTheo.focus(); if (oTiepTheo.select) oTiepTheo.select(); }
+        }
+        return;
+      }
+      const phimDieuKhien = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
+      if (phimDieuKhien.indexOf(phim) !== -1 || evt.ctrlKey || evt.metaKey) return;
+      if (phim === '.' ) {
+        if (o.value.indexOf('.') !== -1) evt.preventDefault();
+        return;
+      }
+      if (!/^[0-9]$/.test(phim)) evt.preventDefault();
+    }
+
+    function luuDiem() {
+      const rows = document.querySelectorAll('#bangDiem tr[data-dong]');
+      const danhSachDiem = [];
+      rows.forEach(tr => {
+        const diem = tr.querySelector('.o-diem').value;
+        if (diem !== '') danhSachDiem.push({ dong: Number(tr.dataset.dong), diem: diem });
+      });
+
+      if (danhSachDiem.length === 0) {
+        hienThiThongBao('msgLuuDiem', 'error', 'Chưa nhập điểm nào.');
+        return;
+      }
+
+      const btn = document.getElementById('btnLuuDiem');
+      btn.disabled = true;
+      btn.textContent = 'Đang lưu...';
+
+      goiApi('luuDiemTrucTiep', [token, danhSachDiem])
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Lưu điểm';
+          hienThiThongBao('msgLuuDiem', res.success ? 'success' : 'error', res.message);
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Lưu điểm';
+          hienThiThongBao('msgLuuDiem', 'error', 'Lỗi hệ thống: ' + err.message);
+        });
+    }
+
+    function taiFileMau() {
+      const nhanChon = document.getElementById('chonNhom').value;
+      goiApi('layLinkTaiFileMau', [token, nhanChon || null])
+        .then(function (res) {
+          if (res.success) window.open(res.url, '_blank');
+          else hienThiThongBao('msgFile', 'error', res.message);
+        })
+        .catch(function (err) { hienThiThongBao('msgFile', 'error', 'Lỗi hệ thống: ' + err.message); });
+    }
+
+    function taiLenFile() {
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        hienThiThongBao('msgFile', 'error', 'Vui lòng chọn file trước.');
+        return;
+      }
+      const file = fileInput.files[0];
+      const btn = document.getElementById('btnTaiLen');
+      btn.disabled = true;
+      btn.textContent = 'Đang tải lên...';
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const base64 = e.target.result.split(',')[1];
+        goiApi('xuLyFileUpload', [token, base64, file.name])
+          .then(function (res) {
+            btn.disabled = false;
+            btn.textContent = 'Tải lên và cập nhật điểm';
+            hienThiThongBao('msgFile', res.success ? 'success' : 'error', res.message);
+            if (res.success) taiBangDiem();
+          })
+          .catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = 'Tải lên và cập nhật điểm';
+            hienThiThongBao('msgFile', 'error', 'Lỗi hệ thống: ' + err.message);
+          });
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
