@@ -540,8 +540,11 @@
       if (o.value.trim() === '') return;
       let v = Number(o.value);
       if (isNaN(v)) { o.value = ''; return; }
-      if (v < 0) v = 0;
-      if (v > 10) v = 10;
+      if (v < 0) { o.value = ''; return; }
+      // Tự động chia cho 10 liên tiếp nếu > 10 (vd gõ nhầm "75" -> hiểu là 7.5).
+      // Giá trị ĐÚNG BẰNG 10 giữ nguyên - vòng lặp chỉ chạy khi > 10.
+      while (v > 10) v = v / 10;
+      v = Math.round(v * 100) / 100;
       o.value = v;
     }
 
