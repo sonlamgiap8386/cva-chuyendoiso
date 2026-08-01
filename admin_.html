@@ -1,0 +1,355 @@
+<!--
+  ADMIN_QuanLy.html — Trang QUẢN TRỊ host trên website riêng của trường, thay thế
+  thao tác qua menu "📋 Quản lý thi" trong Google Sheet. Giao diện/cách gọi API giống
+  hệt xep_phong_thi.html (fetch → doPost, dùng chung Api.gs).
+
+  MỚI: sau mỗi thao tác chạy THÀNH CÔNG, trang sẽ hiện thêm nút "📥 Tải file" tương ứng
+  đúng sheet kết quả vừa được tạo/cập nhật (đọc từ res.fileUrl / res.fileUrls do
+  AdminApi.gs trả về) - không cần mở lại Google Sheet để tải thủ công.
+  LƯU Ý: link tải là link export CHUẨN của Google Sheets (không public) - người bấm tải
+  phải đang đăng nhập bằng tài khoản Google có quyền truy cập chính Spreadsheet này.
+
+  CÁCH DÙNG:
+  1. Deploy > Manage deployments > New version (đảm bảo đã thêm Api.gs whitelist +
+     AdminApi.gs ở trên, và Utils.gs đã có layLinkXuatSheet_()/layDanhSachLinkXuatSheet_()).
+  2. Vào Project Settings > Script Properties > thêm key "MAT_KHAU_ADMIN" = mật khẩu
+     bạn muốn (KHÔNG dùng giá trị mặc định trong Config.gs).
+  3. Dán URL Web App vào biến DIA_CHI_API bên dưới.
+  4. Upload file này lên website riêng, đặt tên tùy ý (vd "quantri.html").
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trang quản trị kỳ thi</title>
+<style>
+  :root {
+    --primary:#1f7a70; --primary-dark:#14544d; --primary-light:#e6f2f0;
+    --success:#1e8e3e; --error:#d93025; --text:#202124; --muted:#5f6368;
+    --border:#dde3e2; --bg:#f4f7f6;
+  }
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);margin:0;color:var(--text)}
+  .khung-ngoai{max-width:840px;margin:24px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  .dai-mau{background:var(--primary);color:#fff;text-align:center;padding:18px 20px}
+  .dai-mau h1{font-size:19px;margin:0 0 4px;font-weight:700}
+  .dai-mau .phu-de{font-size:12.5px;opacity:.9}
+  .noi-dung{padding:22px}
+  .the{border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
+  .the-tieu-de{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fafbfb;border-bottom:1px solid var(--border)}
+  .so-buoc{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+  .the-tieu-de-chu h2{margin:0;font-size:14.5px;font-weight:700}
+  .the-tieu-de-chu p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+  .the-than{padding:16px}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  input[type=text],input[type=password],input[type=number]{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+    font-size:14px;margin-bottom:10px;background:#fff}
+  input:focus{outline:none;border-color:var(--primary)}
+  button{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13.5px;font-weight:700;cursor:pointer}
+  button.full{width:100%}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  button.phu{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+  .msg{font-size:12.5px;margin:6px 0 0;white-space:pre-wrap}
+  .msg.error{color:var(--error)}
+  .msg.success{color:var(--success)}
+  .hidden{display:none}
+  .info-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:12.5px;color:var(--muted)}
+  .info-row a{cursor:pointer;color:var(--primary);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+  th,td{border:1px solid var(--border);padding:7px 8px;text-align:left}
+  th{background:var(--primary-light);color:var(--primary-dark)}
+  tr.chon{background:#fff6d6;cursor:pointer}
+  tr{cursor:pointer}
+  .dai-cuoi{background:var(--primary-dark);color:#fff;text-align:center;font-size:11px;padding:10px;opacity:.85}
+
+  /* MỚI: khu vực chứa các nút "Tải file" hiện ra sau khi chạy xong 1 thao tác */
+  .khu-tai-file{margin-top:8px}
+  .nut-tai-file{
+    display:inline-block; margin:0 8px 6px 0; padding:5px 10px;
+    border:1px solid var(--primary); border-radius:6px;
+    color:var(--primary); font-weight:700; font-size:12.5px;
+    text-decoration:none; background:#fff;
+  }
+  .nut-tai-file:hover{background:var(--primary-light)}
+</style>
+</head>
+<body>
+<div class="khung-ngoai">
+  <div class="dai-mau">
+    <h1>🛠️ TRANG QUẢN TRỊ KỲ THI</h1>
+    <div class="phu-de">Công cụ nội bộ - Trường THPT Chu Văn An</div>
+  </div>
+
+  <div class="noi-dung">
+
+    <!-- ĐĂNG NHẬP -->
+    <div class="the" id="the-dang-nhap">
+      <div class="the-tieu-de">
+        <div class="so-buoc">🔒</div>
+        <div class="the-tieu-de-chu"><h2>Đăng nhập quản trị</h2><p>Nhập mật khẩu quản trị đã cấu hình</p></div>
+      </div>
+      <div class="the-than">
+        <label>Mật khẩu</label>
+        <input type="password" id="matKhauAdmin">
+        <button class="full" onclick="dangNhapAdmin()" id="btnDangNhap">Đăng nhập</button>
+        <div id="msgDangNhap" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- BẢNG ĐIỀU KHIỂN -->
+    <div id="bangDieuKhien" class="hidden">
+      <div class="info-row"><span id="loiChaoAdmin"></span><a onclick="dangXuatAdmin()">Đăng xuất</a></div>
+
+      <!-- MỚI: TÊN KỲ THI - đặt TRƯỚC các chức năng khác, vì tên này được ghép vào
+           tiêu đề của MỌI sheet tạo ra sau đó (danh sách phòng thi, nhập điểm, tổng
+           hợp điểm, top điểm cao...). Nên đặt/kiểm tra đúng tên trước khi chạy bước 1. -->
+      <div class="the" id="the-ten-ky-thi" style="border-color:var(--primary)">
+        <div class="the-tieu-de" style="background:var(--primary-light)">
+          <div class="so-buoc">📝</div>
+          <div class="the-tieu-de-chu">
+            <h2>Tên kỳ thi</h2>
+            <p>Áp dụng cho tiêu đề của mọi sheet tạo ra ở các bước bên dưới - nên đặt/kiểm tra TRƯỚC</p>
+          </div>
+        </div>
+        <div class="the-than">
+          <label>Tên kỳ thi hiện tại</label>
+          <input type="text" id="tenKyThi" placeholder="Vd: KHẢO SÁT LẦN 1, GIỮA KỲ 2 NĂM 2026-2027...">
+          <button class="full" onclick="luuTenKyThi()" id="btnLuuTenKyThi">Lưu tên kỳ thi</button>
+          <div id="msgTenKyThi" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">1</div><div class="the-tieu-de-chu"><h2>Xếp phòng thi</h2><p>Đánh số hiệu phòng theo môn + khối</p></div></div>
+        <div class="the-than">
+          <label>Số thí sinh tối đa mỗi phòng</label>
+          <input type="number" id="soLuongToiDa" value="30" min="1">
+          <button class="full" onclick="chay('adminXepPhongThi', [layInt('soLuongToiDa')], 'msg1')">Chạy</button>
+          <div id="msg1" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">2</div><div class="the-tieu-de-chu"><h2>Xếp lịch thi</h2><p>Tạo các phương án buổi/ca, sau đó chọn 1 phương án để áp dụng</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="xepLichThi()" id="btnXepLich">Tạo phương án</button>
+          <div id="msg2" class="msg"></div>
+          <table id="bangPhuongAn" class="hidden">
+            <thead><tr><th>#</th><th>Phương án</th><th>HS vượt mức</th></tr></thead>
+            <tbody id="thanPhuongAn"></tbody>
+          </table>
+          <button class="full hidden" id="btnApDung" onclick="apDungPhuongAn()">Áp dụng phương án đã chọn</button>
+          <div id="msgApDung" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">4</div><div class="the-tieu-de-chu"><h2>Thống kê phòng thi</h2><p>Phục vụ in đề - đọc lại lịch đã áp dụng</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="chay('adminXuatThongKe', [], 'msg4')">Chạy</button>
+          <div id="msg4" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">5</div><div class="the-tieu-de-chu"><h2>Tổng hợp danh sách phòng thi</h2><p>Thông báo phòng thi cho học sinh</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="chay('adminXuatTongHopTheoDangKy', [], 'msg5')">Chạy</button>
+          <div id="msg5" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">6</div><div class="the-tieu-de-chu"><h2>Phân công giám thị</h2><p>Đọc từ bảng Thống kê</p></div></div>
+        <div class="the-than">
+          <label>Số giám thị mỗi phòng</label>
+          <input type="number" id="soGiamThi" value="2" min="1">
+          <button class="full" onclick="chay('adminPhanCongGiamThi', [layInt('soGiamThi')], 'msg6')">Chạy</button>
+          <div id="msg6" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">7</div><div class="the-tieu-de-chu"><h2>Danh sách nhập điểm</h2><p>Tạo sheet DIEM_{môn} cho GV nhập điểm</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="chay('adminXuatDanhSachNhapDiem', [], 'msg7')">Chạy</button>
+          <div id="msg7" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">8</div><div class="the-tieu-de-chu"><h2>Tổng hợp điểm theo học sinh</h2><p>Gộp điểm tất cả môn theo từng học sinh</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="chay('adminXuatTongHopDiem', [], 'msg8')">Chạy</button>
+          <div id="msg8" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="the">
+        <div class="the-tieu-de"><div class="so-buoc">9</div><div class="the-tieu-de-chu"><h2>Top điểm cao theo khối</h2><p>Chỉ tính học sinh thi đủ số môn tối đa</p></div></div>
+        <div class="the-than">
+          <button class="full" onclick="chay('adminXuatTopDiemCao', [], 'msg9')">Chạy</button>
+          <div id="msg9" class="msg"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="dai-cuoi">Hệ thống quản lý khảo sát chất lượng - Trang quản trị</div>
+</div>
+
+<script>
+  // THAY BẰNG URL WEB APP THẬT CỦA BẠN
+  const DIA_CHI_API = 'https://script.google.com/macros/s/AKfycbyXdRvhOhxEuYm_nTe-4Q_NVYqh0qCaIdXsJ4_zIcy3H65YzuqzCRJ0f45XTLjU_t4e/exec';
+
+  let token = null;
+  let phuongAnDaChon = null;
+
+  function goiApi(tenHam, thamSo) {
+    return fetch(DIA_CHI_API, { method: 'POST', body: JSON.stringify({ action: tenHam, args: thamSo || [] }) })
+      .then(res => { if (!res.ok) throw new Error('Máy chủ phản hồi lỗi HTTP ' + res.status); return res.json(); })
+      .catch(err => { throw new Error(err.message || 'Không thể kết nối tới máy chủ.'); });
+  }
+
+  function layInt(id) { return parseInt(document.getElementById(id).value, 10); }
+  function hienThi(id, loai, noiDung) {
+    const el = document.getElementById(id);
+    el.className = 'msg ' + loai;
+    el.textContent = noiDung;
+  }
+
+  /**
+   * MỚI: hiển thị message + (nếu có) các nút "📥 Tải file" tương ứng chức năng vừa
+   * chạy - đọc từ res.fileUrl (1 sheet) hoặc res.fileUrls (nhiều sheet, dạng
+   * [{ten, url}]) do AdminApi.gs trả về. Chỉ hiện nút khi res.success === true.
+   */
+  function hienThiKetQuaVaFile(idMsg, res) {
+    const el = document.getElementById(idMsg);
+    el.className = 'msg ' + (res.success ? 'success' : 'error');
+    el.textContent = res.message || '';
+
+    const dsFile = [];
+    if (res.fileUrl) dsFile.push({ ten: '', url: res.fileUrl });
+    if (Array.isArray(res.fileUrls)) res.fileUrls.forEach(f => { if (f && f.url) dsFile.push(f); });
+
+    if (res.success && dsFile.length > 0) {
+      const divLink = document.createElement('div');
+      divLink.className = 'khu-tai-file';
+      dsFile.forEach(f => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.className = 'nut-tai-file';
+        a.textContent = '📥 Tải file' + (f.ten ? ' (' + f.ten + ')' : '');
+        divLink.appendChild(a);
+      });
+      el.appendChild(divLink);
+    }
+  }
+
+  function dangNhapAdmin() {
+    const mk = document.getElementById('matKhauAdmin').value;
+    if (!mk) { hienThi('msgDangNhap', 'error', 'Vui lòng nhập mật khẩu.'); return; }
+    const btn = document.getElementById('btnDangNhap');
+    btn.disabled = true; btn.textContent = 'Đang kiểm tra...';
+    goiApi('xacThucAdmin', [mk]).then(res => {
+      btn.disabled = false; btn.textContent = 'Đăng nhập';
+      if (!res.success) { hienThi('msgDangNhap', 'error', res.message); return; }
+      token = res.token;
+      document.getElementById('the-dang-nhap').classList.add('hidden');
+      document.getElementById('bangDieuKhien').classList.remove('hidden');
+      document.getElementById('loiChaoAdmin').textContent = 'Xin chào, ' + res.hoTen;
+      taiTenKyThi(); // MỚI - tải tên kỳ thi hiện tại để hiển thị ngay khi vào trang
+    }).catch(err => {
+      btn.disabled = false; btn.textContent = 'Đăng nhập';
+      hienThi('msgDangNhap', 'error', 'Lỗi hệ thống: ' + err.message);
+    });
+  }
+
+  function dangXuatAdmin() {
+    if (token) goiApi('huyPhienDangNhap', [token]).catch(() => {});
+    token = null;
+    document.getElementById('bangDieuKhien').classList.add('hidden');
+    document.getElementById('the-dang-nhap').classList.remove('hidden');
+    document.getElementById('matKhauAdmin').value = '';
+  }
+
+  // ==== MỚI: TÊN KỲ THI ====
+
+  /** Tải tên kỳ thi hiện tại (Script Properties) để prefill vào ô nhập */
+  function taiTenKyThi() {
+    goiApi('adminLayTenKyThi', [token]).then(res => {
+      if (res.success) document.getElementById('tenKyThi').value = res.tenKyThi || '';
+    }).catch(() => { /* im lặng - không chặn việc dùng các chức năng khác nếu lỗi tải tên */ });
+  }
+
+  /** Lưu tên kỳ thi mới - áp dụng cho tiêu đề mọi sheet tạo ra SAU thời điểm lưu */
+  function luuTenKyThi() {
+    const ten = document.getElementById('tenKyThi').value.trim();
+    if (!ten) { hienThi('msgTenKyThi', 'error', 'Vui lòng nhập tên kỳ thi.'); return; }
+
+    const btn = document.getElementById('btnLuuTenKyThi');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+
+    goiApi('adminDatTenKyThi', [token, ten]).then(res => {
+      btn.disabled = false; btn.textContent = 'Lưu tên kỳ thi';
+      hienThi('msgTenKyThi', res.success ? 'success' : 'error', res.message);
+      if (res.success && res.tenKyThi) document.getElementById('tenKyThi').value = res.tenKyThi;
+    }).catch(err => {
+      btn.disabled = false; btn.textContent = 'Lưu tên kỳ thi';
+      hienThi('msgTenKyThi', 'error', 'Lỗi hệ thống: ' + err.message);
+    });
+  }
+
+  /** Gọi 1 hàm admin bất kỳ (token luôn là tham số đầu) rồi hiển thị kết quả + nút tải file (nếu có) */
+  function chay(tenHam, thamSoConLai, idMsg) {
+    hienThi(idMsg, '', 'Đang xử lý...');
+    goiApi(tenHam, [token].concat(thamSoConLai))
+      .then(res => hienThiKetQuaVaFile(idMsg, res))
+      .catch(err => hienThi(idMsg, 'error', 'Lỗi hệ thống: ' + err.message));
+  }
+
+  function xepLichThi() {
+    const btn = document.getElementById('btnXepLich');
+    btn.disabled = true; btn.textContent = 'Đang xếp lịch...';
+    hienThi('msg2', '', 'Đang xử lý (có thể mất vài giây)...');
+    goiApi('adminXepLichThi', [token]).then(res => {
+      btn.disabled = false; btn.textContent = 'Tạo phương án';
+      hienThiKetQuaVaFile('msg2', res);
+      if (res.success) hienThiPhuongAn(res.phuongAnList);
+    }).catch(err => {
+      btn.disabled = false; btn.textContent = 'Tạo phương án';
+      hienThi('msg2', 'error', 'Lỗi hệ thống: ' + err.message);
+    });
+  }
+
+  function hienThiPhuongAn(danhSach) {
+    const tbody = document.getElementById('thanPhuongAn');
+    tbody.innerHTML = '';
+    phuongAnDaChon = null;
+    danhSach.forEach(pa => {
+      const tr = document.createElement('tr');
+      tr.dataset.stt = pa.stt;
+      tr.innerHTML = '<td>' + pa.stt + '</td><td>' + pa.ten + ' (' + pa.soBuoi + ' buổi)</td><td>' + pa.soHocSinhVuot + '</td>';
+      tr.onclick = function () {
+        document.querySelectorAll('#thanPhuongAn tr').forEach(r => r.classList.remove('chon'));
+        tr.classList.add('chon');
+        phuongAnDaChon = pa.stt;
+      };
+      tbody.appendChild(tr);
+    });
+    document.getElementById('bangPhuongAn').classList.remove('hidden');
+    document.getElementById('btnApDung').classList.remove('hidden');
+  }
+
+  function apDungPhuongAn() {
+    if (!phuongAnDaChon) { hienThi('msgApDung', 'error', 'Vui lòng chọn 1 phương án trong bảng trên (bấm vào dòng).'); return; }
+    chay('adminApDungPhuongAn', [phuongAnDaChon], 'msgApDung');
+  }
+</script>
+</body>
+</html>
