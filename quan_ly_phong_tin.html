@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base target="_top">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
   :root{
     --ink:#1B2A4A;
@@ -171,15 +171,14 @@
     0% { background-position: 0% 50%; }
     100% { background-position: 300% 50%; }
   }
-</style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </style>
 </head>
 <body>
 
   <!-- ===================== MÀN HÌNH ĐĂNG NHẬP ===================== -->
   <div class="card" id="loginCard">
     <div class="banner">
-      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN - BẮC NINH</p>
+      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN</p>
       <p class="ten-ung-dung">ĐĂNG KÝ SỬ DỤNG PHÒNG TIN HỌC</p>
       <p class="nam-hoc">Năm học 2026 - 2027</p>
     </div>
@@ -190,24 +189,24 @@
       <input type="text" id="loginHoTen" placeholder="VD: Giáp Văn Khiêm">
 
       <label>Mật khẩu</label>
-      <input type="password" id="loginMatKhau" placeholder="Mật khẩu">
+      <input type="password" id="loginMatKhau" placeholder="********">
 
       <button onclick="dangNhap()">Xác thực</button>
       <div class="msg" id="loginMsg"></div>
-      <div class="footer-credit">Công cụ nội bộ - Xây dựng và phát triển GVK_512!</div>
+      <div class="footer-credit">Công cụ nội bộ - Thiết kế và phát triển GVK_512!</div>
     </div>
   </div>
 
   <!-- ===================== KHU VỰC LÀM VIỆC (2 TAB) ===================== -->
   <div class="card wide" id="workspaceCard" style="display:none;">
     <div class="banner">
-      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN - BẮC NINH</p>
+      <p class="ten-truong">TRƯỜNG THPT CHU VĂN AN</p>
       <p class="ten-ung-dung">ĐĂNG KÝ SỬ DỤNG PHÒNG TIN HỌC</p>
       <p class="nam-hoc">Năm học 2026 - 2027</p>
     </div>
 
     <div class="tab-nav">
-      <button type="button" class="tab-btn active" id="tabBtnDangKy" onclick="chuyenTab('dangky')">📋 Đăng ký tiết dạy </button>
+      <button type="button" class="tab-btn active" id="tabBtnDangKy" onclick="chuyenTab('dangky')">📋 Đăng ký tiết</button>
       <button type="button" class="tab-btn" id="tabBtnLich" onclick="chuyenTab('lich')">📅 Xem lịch / Tình trạng máy</button>
     </div>
 
@@ -237,7 +236,7 @@
         <div class="upload-box">
           <label>Tự động điền từ file Lịch báo giảng (.xlsx) — không bắt buộc</label>
           <input type="file" id="fFileTaiLen" accept=".xlsx,.xls" onchange="xuLyFileTaiLen(event)">
-          <div class="hint">Chọn file Lịch báo giảng tải về từ CSDL NGÀNH — hệ thống tự điền các tiết môn Tin học vào bảng bên dưới.</div>
+          <div class="hint">Chọn file Lịch báo giảng cá nhân đã có sẵn — hệ thống tự lọc và điền các tiết môn Tin học vào bảng bên dưới.</div>
           <div class="msg" id="uploadMsg"></div>
         </div>
 
@@ -302,12 +301,13 @@
       </div>
     </div>
   </div>
-
-  <script>
+<script>
     // ==================== CẤU HÌNH BẮT BUỘC ====================
     // Dán đúng link Web App /exec của bạn (Deploy > Manage deployments
     // > Web app URL). PHẢI kết thúc bằng "/exec", không phải "/dev".
-    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcKw8_AORR1_qSjxhlUKTQjbUznVsm47Mun6VLfOWQC39koP13SY9-XbtOEWDe0rWpyg/exec';
+    // Có thể set qua biến môi trường APPS_SCRIPT_URL khi build để không
+    // phải sửa tay file này mỗi lần build lại.
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6nKFbdpWqyLx-kd66iqagtQcNoFTUq-M5p709Gx8C3lBfEy6a_OImmHTRvv8q-sH2BQ/exec';
     // =============================================================
 
     function goiApiThat_(hanhDong, doiSo) {
@@ -345,7 +345,7 @@
 
     window.google = { script: { run: taoRunnerThat_(null, null) } };
 
-  // Phải khớp với DANH_SACH_THU / DANH_SACH_TIET / BUOI_MAC_DINH trong Config.gs
+    // Phải khớp với DANH_SACH_THU / DANH_SACH_TIET / BUOI_MAC_DINH trong Config.gs
   const DANH_SACH_THU = [2, 3, 4, 5, 6, 7];
   const DANH_SACH_TIET = [1, 2, 3, 4, 5];
   const BUOI_MAC_DINH = 'Sáng';
