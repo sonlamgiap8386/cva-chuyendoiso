@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Quản trị dữ liệu phòng Tin học</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+  :root{
+    --ink:#1B2A4A; --ink-soft:#3C4A68; --paper:#FBF9F4; --paper-line:#E4DFD1;
+    --card:#FFFFFF; --brass:#B08D57; --slate:#6B7280;
+    --good:#2F6F4E; --good-bg:#EAF3EC; --err:#B3261E; --err-bg:#FBEAE9;
+    --teal-deep:#0B5C59; --teal:#0E7C77; --teal-light:#E3F3F1; --radius:12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--paper);
+    background-image: linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 42px;
+    margin: 0; padding: 20px 10px; color: var(--ink);
+  }
+  .card { max-width: 480px; margin: 0 auto; background: var(--card);
+    border: 1px solid var(--paper-line); border-top: 3px solid var(--teal);
+    border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 10px rgba(11,92,89,.08); }
+  .card.wide { max-width: 1100px; }
+  .banner { background: linear-gradient(135deg, var(--teal-deep), var(--teal) 70%); padding: 22px 20px; text-align: center; }
+  .banner .ten-ung-dung { font-family: 'Source Serif 4', serif; font-weight: 700; font-size: clamp(18px, 4vw, 22px); color: #fff; margin: 0; }
+  .banner .phu-de { font-size: 12.5px; color: #CFEDE9; margin: 6px 0 0; letter-spacing: .04em; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; }
+  .body { padding: 24px; }
+  .sub { font-size: 13px; color: var(--teal-deep); text-align: center; margin-bottom: 18px; font-weight: 600; }
+  label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin: 14px 0 6px; }
+  input, select { width: 100%; padding: 10px 11px; border: 1px solid var(--paper-line); border-radius: 7px; font-size: 14px; background: #fff; color: var(--ink); font-family: 'IBM Plex Mono', monospace; }
+  input:focus, select:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+  button { margin-top: 16px; padding: 11px 16px; border: none; border-radius: 8px; background: var(--teal-deep); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+  button:hover { background: var(--teal); }
+  button:disabled { background: #B7BDC9; cursor: not-allowed; }
+  button.secondary { background: transparent; border: 1px solid var(--paper-line); color: var(--ink-soft); }
+  button.full { width: 100%; }
+  .msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .msg.ok { background: var(--good-bg); color: var(--good); display: block; }
+  .msg.err { background: var(--err-bg); color: var(--err); display: block; }
+  .tab-nav { display: flex; border-bottom: 1px solid var(--paper-line); background: var(--teal-light); flex-wrap: wrap; }
+  .tab-btn { flex: 1; min-width: 140px; padding: 12px 10px; border: none; background: transparent; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; font-family: 'Inter', sans-serif; border-bottom: 3px solid transparent; cursor: pointer; }
+  .tab-btn.active { color: var(--teal-deep); border-bottom: 3px solid var(--teal); background: #fff; }
+  .row2 { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row2 > div { flex: 1; min-width: 160px; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 6px; }
+  .bang-wrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--paper-line); border-radius: 10px; max-height: 60vh; }
+  table.bang-du-lieu { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 12.5px; font-family: 'Inter', sans-serif; }
+  table.bang-du-lieu th { background: var(--teal-light); color: var(--ink-soft); font-weight: 700; padding: 8px 6px; border: 1px solid var(--paper-line); position: sticky; top: 0; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .03em; text-transform: uppercase; }
+  table.bang-du-lieu td { border: 1px solid var(--paper-line); padding: 6px 8px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 12px; white-space: nowrap; }
+  table.bang-du-lieu td.rong { text-align: center; color: var(--slate); font-family: 'Inter', sans-serif; padding: 18px; }
+  .dem-dong { font-size: 12px; color: var(--slate); margin-top: 8px; }
+  .footer-credit { text-align: center; font-size: 11px; color: var(--slate); margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== ĐĂNG NHẬP QUẢN TRỊ ===================== -->
+  <div class="card" id="loginCard">
+    <div class="banner">
+      <p class="ten-ung-dung">Quản trị dữ liệu phòng Tin học</p>
+      <p class="phu-de">Xem &amp; xuất Excel — Nhật ký / Thống kê / Sửa chữa</p>
+    </div>
+    <div class="body">
+      <div class="sub">Chỉ dành cho quản trị viên — mật khẩu riêng, khác mật khẩu GV</div>
+      <label>Mật khẩu quản trị</label>
+      <input type="password" id="adminMatKhau" placeholder="********" onkeydown="if(event.key==='Enter')dangNhapQuanTri()">
+      <button class="full" onclick="dangNhapQuanTri()">Đăng nhập</button>
+      <div class="msg" id="loginMsg"></div>
+      <div class="footer-credit">Trang quản trị nội bộ — không chia sẻ link/mật khẩu ra ngoài.</div>
+    </div>
+  </div>
+
+  <!-- ===================== KHU VỰC LÀM VIỆC ===================== -->
+  <div class="card wide" id="workspaceCard" style="display:none;">
+    <div class="banner">
+      <p class="ten-ung-dung">Quản trị dữ liệu phòng Tin học</p>
+      <p class="phu-de">Xem &amp; xuất Excel</p>
+    </div>
+
+    <div class="tab-nav">
+      <button type="button" class="tab-btn active" id="tab-nhatky" onclick="chuyenTab('nhatky')">🗂 Nhật ký phòng</button>
+      <button type="button" class="tab-btn" id="tab-thongke" onclick="chuyenTab('thongke')">📊 Thống kê</button>
+      <button type="button" class="tab-btn" id="tab-suachua" onclick="chuyenTab('suachua')">🛠 Sửa chữa</button>
+    </div>
+
+    <div class="body">
+      <!-- ---------- TAB: NHẬT KÝ PHÒNG ---------- -->
+      <div id="panel-nhatky">
+        <div class="row2">
+          <div>
+            <label>Chọn phòng</label>
+            <select id="chonPhong">
+              <option value="1">Phòng Tin học số 1</option>
+              <option value="2">Phòng Tin học số 2</option>
+              <option value="3">Phòng Tin học số 3</option>
+            </select>
+          </div>
+          <div><button onclick="taiNhatKyPhong()">Tải dữ liệu</button></div>
+          <div><button class="secondary" onclick="xuatExcelNhatKy()">Xuất Excel phòng này</button></div>
+          <div><button class="secondary" onclick="xuatTatCaPhong()">Xuất Excel cả 3 phòng (1 file)</button></div>
+        </div>
+        <div class="msg" id="nhatkyMsg"></div>
+        <div class="bang-wrap"><table class="bang-du-lieu" id="bangNhatKy"></table></div>
+        <div class="dem-dong" id="demNhatKy"></div>
+      </div>
+
+      <!-- ---------- TAB: THỐNG KÊ ---------- -->
+      <div id="panel-thongke" style="display:none;">
+        <div class="toolbar">
+          <button onclick="taiThongKe()">Tải dữ liệu</button>
+          <button class="secondary" onclick="xuatExcelThongKe()">Xuất Excel</button>
+        </div>
+        <div class="msg" id="thongkeMsg"></div>
+        <div class="bang-wrap"><table class="bang-du-lieu" id="bangThongKe"></table></div>
+        <div class="dem-dong" id="demThongKe"></div>
+      </div>
+
+      <!-- ---------- TAB: SỬA CHỮA ---------- -->
+      <div id="panel-suachua" style="display:none;">
+        <div class="toolbar">
+          <button onclick="taiSuaChua()">Tải dữ liệu</button>
+          <button class="secondary" onclick="xuatExcelSuaChua()">Xuất Excel</button>
+        </div>
+        <div class="msg" id="suachuaMsg"></div>
+        <div class="bang-wrap"><table class="bang-du-lieu" id="bangSuaChua"></table></div>
+        <div class="dem-dong" id="demSuaChua"></div>
+      </div>
+
+      <button class="secondary full" style="margin-top:20px;" onclick="dangXuatQuanTri()">Đăng xuất</button>
+    </div>
+  </div>
+
+  <script>
+    // ==================== CẤU HÌNH BẮT BUỘC ====================
+    // Dán đúng link Web App /exec của bạn (Deploy > Manage deployments >
+    // Web app URL). PHẢI kết thúc bằng "/exec", không phải "/dev".
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwa23KHu74Y8vodiwQz0075dx3hTFkhga-K-0a9I2pSV8Sla2HD0uPlwUnRFlhx1lNS2w/exec';
+    // =============================================================
+
+    function goiApi_(hanhDong, doiSo) {
+      return fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        // text/plain để trình duyệt không gửi preflight OPTIONS (Apps Script
+        // Web App không xử lý OPTIONS -> sẽ lỗi CORS nếu để application/json).
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: hanhDong, args: doiSo })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (!json.ok) throw new Error(json.error || 'Lỗi không xác định từ máy chủ.');
+          return json.result;
+        });
+    }
+
+    var MAT_KHAU_QT = '';
+
+    function dangNhapQuanTri() {
+      var mk = document.getElementById('adminMatKhau').value;
+      var msg = document.getElementById('loginMsg');
+      msg.className = 'msg';
+      if (!mk) { msg.className = 'msg err'; msg.textContent = 'Vui lòng nhập mật khẩu.'; return; }
+
+      goiApi_('xacThucAdmin', [mk])
+        .then(function (res) {
+          if (res.thanhCong) {
+            MAT_KHAU_QT = mk;
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('workspaceCard').style.display = 'block';
+          } else {
+            msg.className = 'msg err';
+            msg.textContent = res.thongBao;
+          }
+        })
+        .catch(function (err) {
+          msg.className = 'msg err';
+          msg.textContent = 'Lỗi hệ thống: ' + err.message;
+        });
+    }
+
+    function dangXuatQuanTri() {
+      MAT_KHAU_QT = '';
+      document.getElementById('workspaceCard').style.display = 'none';
+      document.getElementById('loginCard').style.display = 'block';
+      document.getElementById('adminMatKhau').value = '';
+      document.getElementById('loginMsg').className = 'msg';
+    }
+
+    function chuyenTab(ten) {
+      ['nhatky', 'thongke', 'suachua'].forEach(function (t) {
+        document.getElementById('panel-' + t).style.display = (t === ten) ? 'block' : 'none';
+        document.getElementById('tab-' + t).classList.toggle('active', t === ten);
+      });
+    }
+
+    function thoat_(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function veBangRong_(bangEl, soCot, thongBao) {
+      bangEl.innerHTML = '<tr><td class="rong" colspan="' + soCot + '">' + thoat_(thongBao) + '</td></tr>';
+    }
+
+    // ===================== TAB: NHẬT KÝ PHÒNG =====================
+    var DU_LIEU_NHATKY = [];
+    var COT_NHATKY = [
+      ['tuan', 'Tuần'], ['ngayBatDau', 'Từ ngày'], ['ngayKetThuc', 'Đến ngày'],
+      ['thu', 'Thứ'], ['tiet', 'Tiết'], ['buoi', 'Buổi'], ['lop', 'Lớp'],
+      ['tietPPCT', 'Tiết PPCT'], ['soMay', 'Số máy'], ['tenBaiDay', 'Tên bài dạy'],
+      ['ttDau', 'TT đầu giờ'], ['ttCuoi', 'TT cuối giờ'], ['gv', 'GV dạy'], ['ghiChu', 'Ghi chú']
+    ];
+
+    function taiNhatKyPhong() {
+      var phong = document.getElementById('chonPhong').value;
+      var msg = document.getElementById('nhatkyMsg');
+      msg.className = 'msg ok'; msg.textContent = 'Đang tải dữ liệu...';
+
+      goiApi_('layNhatKyPhong', [MAT_KHAU_QT, phong])
+        .then(function (res) {
+          if (!res.thanhCong) { msg.className = 'msg err'; msg.textContent = res.thongBao; return; }
+          DU_LIEU_NHATKY = res.danhSach;
+          renderBang_(document.getElementById('bangNhatKy'), COT_NHATKY, DU_LIEU_NHATKY, 'Phòng này chưa có tiết nào được đăng ký.');
+          document.getElementById('demNhatKy').textContent = 'Tổng: ' + DU_LIEU_NHATKY.length + ' tiết đã đăng ký.';
+          msg.className = 'msg ok'; msg.textContent = 'Đã tải xong.';
+        })
+        .catch(function (err) { msg.className = 'msg err'; msg.textContent = 'Lỗi: ' + err.message; });
+    }
+
+    function xuatExcelNhatKy() {
+      if (DU_LIEU_NHATKY.length === 0) { alert('Chưa có dữ liệu — bấm "Tải dữ liệu" trước.'); return; }
+      var phong = document.getElementById('chonPhong').value;
+      var ws = XLSX.utils.json_to_sheet(anhXaHang_(COT_NHATKY, DU_LIEU_NHATKY));
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Phong ' + phong);
+      XLSX.writeFile(wb, 'NhatKy_Phong' + phong + '.xlsx');
+    }
+
+    function xuatTatCaPhong() {
+      var msg = document.getElementById('nhatkyMsg');
+      msg.className = 'msg ok'; msg.textContent = 'Đang tải dữ liệu cả 3 phòng để xuất...';
+
+      Promise.all([1, 2, 3].map(function (p) { return goiApi_('layNhatKyPhong', [MAT_KHAU_QT, p]); }))
+        .then(function (ketQuas) {
+          var wb = XLSX.utils.book_new();
+          var coDuLieu = false;
+          ketQuas.forEach(function (res, i) {
+            var phong = i + 1;
+            if (!res.thanhCong) return;
+            coDuLieu = true;
+            var ws = XLSX.utils.json_to_sheet(anhXaHang_(COT_NHATKY, res.danhSach));
+            XLSX.utils.book_append_sheet(wb, ws, 'Phong ' + phong);
+          });
+          if (!coDuLieu) { msg.className = 'msg err'; msg.textContent = 'Không tải được dữ liệu phòng nào.'; return; }
+          XLSX.writeFile(wb, 'NhatKy_TatCa3Phong.xlsx');
+          msg.className = 'msg ok'; msg.textContent = 'Đã xuất file Excel gồm cả 3 phòng (mỗi phòng 1 sheet).';
+        })
+        .catch(function (err) { msg.className = 'msg err'; msg.textContent = 'Lỗi: ' + err.message; });
+    }
+
+    // ===================== TAB: THỐNG KÊ =====================
+    var DU_LIEU_THONGKE = [];
+    var COT_THONGKE = [
+      ['phong', 'Phòng'], ['tuan', 'Tuần'], ['tongSoMay', 'Tổng số máy'],
+      ['soTietDaSuDung', 'Số tiết đã sử dụng'], ['soMayChuaDungTB', 'Số máy chưa dùng (TB/tiết)'],
+      ['canhBaoTinhTrangMay', 'Cảnh báo tình trạng máy'], ['capNhatLuc', 'Cập nhật lúc']
+    ];
+
+    function taiThongKe() {
+      var msg = document.getElementById('thongkeMsg');
+      msg.className = 'msg ok'; msg.textContent = 'Đang tải dữ liệu...';
+
+      goiApi_('layDuLieuThongKe', [MAT_KHAU_QT])
+        .then(function (res) {
+          if (!res.thanhCong) { msg.className = 'msg err'; msg.textContent = res.thongBao; return; }
+          DU_LIEU_THONGKE = res.danhSach;
+          renderBang_(document.getElementById('bangThongKe'), COT_THONGKE, DU_LIEU_THONGKE, 'Chưa có dữ liệu thống kê.');
+          document.getElementById('demThongKe').textContent = 'Tổng: ' + DU_LIEU_THONGKE.length + ' dòng (mỗi dòng = 1 Phòng + 1 Tuần).';
+          msg.className = 'msg ok'; msg.textContent = 'Đã tải xong.';
+        })
+        .catch(function (err) { msg.className = 'msg err'; msg.textContent = 'Lỗi: ' + err.message; });
+    }
+
+    function xuatExcelThongKe() {
+      if (DU_LIEU_THONGKE.length === 0) { alert('Chưa có dữ liệu — bấm "Tải dữ liệu" trước.'); return; }
+      var ws = XLSX.utils.json_to_sheet(anhXaHang_(COT_THONGKE, DU_LIEU_THONGKE));
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'ThongKe');
+      XLSX.writeFile(wb, 'ThongKe_PhongTinHoc.xlsx');
+    }
+
+    // ===================== TAB: SỬA CHỮA =====================
+    var DU_LIEU_SUACHUA = [];
+    var COT_SUACHUA = [
+      ['stt', 'STT'], ['tenPhong', 'Tên phòng'], ['soMay', 'Số máy'], ['loi', 'Lỗi'],
+      ['cachKhacPhuc', 'Cách khắc phục'], ['ngaySua', 'Ngày sửa'], ['ghiChu', 'Ghi chú']
+    ];
+
+    function taiSuaChua() {
+      var msg = document.getElementById('suachuaMsg');
+      msg.className = 'msg ok'; msg.textContent = 'Đang tải dữ liệu...';
+
+      goiApi_('layDuLieuSuaChua', [MAT_KHAU_QT])
+        .then(function (res) {
+          if (!res.thanhCong) { msg.className = 'msg err'; msg.textContent = res.thongBao; return; }
+          DU_LIEU_SUACHUA = res.danhSach;
+          renderBang_(document.getElementById('bangSuaChua'), COT_SUACHUA, DU_LIEU_SUACHUA, 'Chưa có lỗi nào cần sửa chữa.');
+          document.getElementById('demSuaChua').textContent = 'Tổng: ' + DU_LIEU_SUACHUA.length + ' dòng lỗi.';
+          msg.className = 'msg ok'; msg.textContent = 'Đã tải xong.';
+        })
+        .catch(function (err) { msg.className = 'msg err'; msg.textContent = 'Lỗi: ' + err.message; });
+    }
+
+    function xuatExcelSuaChua() {
+      if (DU_LIEU_SUACHUA.length === 0) { alert('Chưa có dữ liệu — bấm "Tải dữ liệu" trước.'); return; }
+      var ws = XLSX.utils.json_to_sheet(anhXaHang_(COT_SUACHUA, DU_LIEU_SUACHUA));
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'SuaChua');
+      XLSX.writeFile(wb, 'SuaChua_PhongTinHoc.xlsx');
+    }
+
+    // ===================== TIỆN ÍCH DÙNG CHUNG =====================
+    // Vẽ 1 bảng HTML từ danhSach (mảng object) theo đúng cột đã khai báo (cotDinhNghia).
+    function renderBang_(bangEl, cotDinhNghia, danhSach, thongBaoNeuRong) {
+      if (!danhSach || danhSach.length === 0) {
+        veBangRong_(bangEl, cotDinhNghia.length, thongBaoNeuRong);
+        return;
+      }
+      var html = '<thead><tr>';
+      cotDinhNghia.forEach(function (c) { html += '<th>' + thoat_(c[1]) + '</th>'; });
+      html += '</tr></thead><tbody>';
+      danhSach.forEach(function (dong) {
+        html += '<tr>';
+        cotDinhNghia.forEach(function (c) { html += '<td>' + thoat_(dong[c[0]]) + '</td>'; });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      bangEl.innerHTML = html;
+    }
+
+    // Chuyển mảng object thô -> mảng object có tên cột tiếng Việt đẹp, để
+    // XLSX.utils.json_to_sheet() xuất ra đúng tiêu đề cột mong muốn.
+    function anhXaHang_(cotDinhNghia, danhSach) {
+      return danhSach.map(function (dong) {
+        var moi = {};
+        cotDinhNghia.forEach(function (c) { moi[c[1]] = dong[c[0]]; });
+        return moi;
+      });
+    }
+  </script>
+</body>
+</html>
