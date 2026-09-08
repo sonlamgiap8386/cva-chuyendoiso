@@ -450,10 +450,10 @@
                   '<option value="Sáng"' + (BUOI_MAC_DINH === 'Sáng' ? ' selected' : '') + '>Sáng</option>' +
                   '<option value="Chiều"' + (BUOI_MAC_DINH === 'Chiều' ? ' selected' : '') + '>Chiều</option>' +
                 '</select></td>';
-        html += '<td class="col-lop"><input class="o-dang-ky f-lop" type="text" disabled placeholder="11A1"></td>';
-        html += '<td class="col-ppct"><input class="o-dang-ky f-ppct" type="text" disabled placeholder="VD: 54" onblur="tuDongDienBaiDay(this)"></td>';
-        html += '<td class="col-somay"><input class="o-dang-ky f-somay" type="number" min="0" disabled placeholder="25"></td>';
-        html += '<td class="col-baiday"><input class="o-dang-ky f-baiday" type="text" disabled placeholder="Tự điền theo PPCT hoặc nhập tay"></td>';
+        html += '<td class="col-lop"><input class="o-dang-ky f-lop" type="text" disabled placeholder=""></td>';
+        html += '<td class="col-ppct"><input class="o-dang-ky f-ppct" type="text" disabled placeholder="" onblur="tuDongDienBaiDay(this)"></td>';
+        html += '<td class="col-somay"><input class="o-dang-ky f-somay" type="number" min="0" disabled placeholder=""></td>';
+        html += '<td class="col-baiday"><input class="o-dang-ky f-baiday" type="text" disabled placeholder=""></td>';
         html += '<td class="col-ghichu"><input class="o-dang-ky f-ghichu" type="text" disabled placeholder="Không bắt buộc"></td>';
         html += '</tr>';
       });
