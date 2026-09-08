@@ -307,7 +307,7 @@
     // > Web app URL). PHẢI kết thúc bằng "/exec", không phải "/dev".
     // Có thể set qua biến môi trường APPS_SCRIPT_URL khi build để không
     // phải sửa tay file này mỗi lần build lại.
-    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKk1rVDQZL4o9ke35QK0Ram5FEr3TyYiVUTtjMXn_1kdsQO87rF4yuj74GURH2rG_l6g/exec';
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6nKFbdpWqyLx-kd66iqagtQcNoFTUq-M5p709Gx8C3lBfEy6a_OImmHTRvv8q-sH2BQ/exec';
     // =============================================================
 
     function goiApiThat_(hanhDong, doiSo) {
@@ -604,10 +604,12 @@
 
       const thuTho = String(r[idx.thu] || '').split('\n')[0];
       const mThu = thuTho.match(/(\d)/);
-      const tiet = String(r[idx.tiet] || '').trim();
+      const tietTho = String(r[idx.tiet] || '').split('\n')[0];
+      const mTiet = tietTho.match(/(\d+)/);
+      const tiet = mTiet ? mTiet[1] : '';
 
       if (!mThu || DANH_SACH_THU.indexOf(Number(mThu[1])) === -1) continue;
-      if (DANH_SACH_TIET.indexOf(Number(tiet)) === -1) continue;
+      if (!mTiet || DANH_SACH_TIET.indexOf(Number(tiet)) === -1) continue;
 
       danhSach.push({
         thu: mThu[1],
