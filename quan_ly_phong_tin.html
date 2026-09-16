@@ -307,7 +307,7 @@
     // > Web app URL). PHẢI kết thúc bằng "/exec", không phải "/dev".
     // Có thể set qua biến môi trường APPS_SCRIPT_URL khi build để không
     // phải sửa tay file này mỗi lần build lại.
-    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6nKFbdpWqyLx-kd66iqagtQcNoFTUq-M5p709Gx8C3lBfEy6a_OImmHTRvv8q-sH2BQ/exec';
+    var APPS_SCRIPT_URL = 'DÁN_LINK_/exec_CỦA_BẠN_VÀO_ĐÂY';
     // =============================================================
 
     function goiApiThat_(hanhDong, doiSo) {
@@ -450,10 +450,10 @@
                   '<option value="Sáng"' + (BUOI_MAC_DINH === 'Sáng' ? ' selected' : '') + '>Sáng</option>' +
                   '<option value="Chiều"' + (BUOI_MAC_DINH === 'Chiều' ? ' selected' : '') + '>Chiều</option>' +
                 '</select></td>';
-        html += '<td class="col-lop"><input class="o-dang-ky f-lop" type="text" disabled placeholder=""></td>';
-        html += '<td class="col-ppct"><input class="o-dang-ky f-ppct" type="text" disabled placeholder="" onblur="tuDongDienBaiDay(this)"></td>';
-        html += '<td class="col-somay"><input class="o-dang-ky f-somay" type="number" min="0" disabled placeholder=""></td>';
-        html += '<td class="col-baiday"><input class="o-dang-ky f-baiday" type="text" disabled placeholder=""></td>';
+        html += '<td class="col-lop"><input class="o-dang-ky f-lop" type="text" disabled placeholder="11A1"></td>';
+        html += '<td class="col-ppct"><input class="o-dang-ky f-ppct" type="text" disabled placeholder="VD: 54" onblur="tuDongDienBaiDay(this)"></td>';
+        html += '<td class="col-somay"><input class="o-dang-ky f-somay" type="number" min="0" disabled placeholder="25"></td>';
+        html += '<td class="col-baiday"><input class="o-dang-ky f-baiday" type="text" disabled placeholder="Tự điền theo PPCT hoặc nhập tay"></td>';
         html += '<td class="col-ghichu"><input class="o-dang-ky f-ghichu" type="text" disabled placeholder="Không bắt buộc"></td>';
         html += '</tr>';
       });
@@ -599,9 +599,12 @@
       const baiDay = String(r[idx.baiday] || '').trim();
       if (!baiDay) continue; // dòng trống hoặc không có tiết dạy -> bỏ qua
 
-      const monHoc = String(r[idx.monhoc] || '').trim();
+      const monHoc = String(r[idx.monhoc] || '').replace(/\s+/g, ' ').trim();
       if (monHoc.toLowerCase() !== MON_HOC_CAN_LOC.toLowerCase()) continue; // chỉ lấy tiết Tin học
 
+      // Cột "Thứ" và "Tiết học TKB" trong file Lịch báo giảng có 2 dòng, ví dụ:
+      //   Thứ  -> "Thứ 2\n14/09/2026"      Tiết học TKB -> "3\n08:50 - 09:35"
+      // nên phải tách lấy phần số ở dòng đầu, không dùng nguyên chuỗi.
       const thuTho = String(r[idx.thu] || '').split('\n')[0];
       const mThu = thuTho.match(/(\d)/);
       const tietTho = String(r[idx.tiet] || '').split('\n')[0];
