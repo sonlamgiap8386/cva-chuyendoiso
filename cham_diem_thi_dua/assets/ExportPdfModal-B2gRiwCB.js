@@ -205,14 +205,14 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                       className: "text-base sm:text-lg font-bold text-white flex items-center gap-2",
                       style: { fontFamily: "'Times New Roman', Times, serif" },
                       children: [
-                        e.jsx("span", { children: "Xuất Biên Bản Thi Đua CBVC (Chuẩn Times New Roman)" }),
+                        e.jsx("span", { children: "Xuất Biên Bản Thi Đua CBVC" }),
                         e.jsx("span", { className: "text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40", children: g })
                       ]
                     }),
                     e.jsx("p", {
                       className: "text-xs text-emerald-300/70",
                       style: { fontFamily: "'Times New Roman', Times, serif" },
-                      children: "Mẫu chuẩn 3 phần: Phần đầu (Ảnh 1), Bảng 12 cột (Ảnh 2), Chữ ký dấu (Ảnh 3)"
+                      children: "Mẫu chuẩn"
                     })
                   ]
                 })
@@ -233,7 +233,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                   onClick: w,
                   className: "flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-[#031713] text-xs font-black shadow-md transition-all cursor-pointer",
                   title: "Mở hộp thoại in và chọn Lưu dưới dạng PDF",
-                  children: [e.jsx(P, { className: "w-4 h-4" }), e.jsx("span", { children: "Lưu PDF / In Ngay (A4)" })]
+                  children: [e.jsx(P, { className: "w-4 h-4" }), e.jsx("span", { children: "Lưu PDF / In" })]
                 }),
                 e.jsx("button", {
                   type: "button",
