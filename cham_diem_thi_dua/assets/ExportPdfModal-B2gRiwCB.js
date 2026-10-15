@@ -335,7 +335,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                       e.jsxs("div", {
                         className: "text-center w-[45%]",
                         children: [
-                          e.jsx("div", { className: "text-[12px] uppercase font-bold tracking-tight", children: "SỞ GIÁO DỤC VÀ ĐÀO TẠO TỈNH BẮC NINH" }),
+                          e.jsx("div", { className: "text-[12px] uppercase font-bold tracking-tight", children: "SỞ GIÁO DỤC VÀ ĐÀO TẠO TP BẮC NINH" }),
                           e.jsx("div", { className: "text-[13px] uppercase font-bold tracking-normal mt-0.5", children: "TRƯỜNG THPT CHU VĂN AN" }),
                           e.jsx("div", { className: "w-28 h-[1px] bg-black mx-auto mt-1 mb-1.5" }),
                           e.jsx("div", { className: "text-[11px]", children: "Số: 128/BB-HĐTĐKT" })
@@ -493,7 +493,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                           e.jsx("div", { className: "text-[10.5px] italic text-stone-600 mt-0.5", children: "(Ký và ghi rõ họ tên)" })
                         ]
                       }),
-                      e.jsx("div", { className: "font-bold text-[13px] text-black", children: "Giáp Văn Khiêm" })
+                      e.jsx("div", { className: "font-bold text-[13px] text-black", children: "Nguyễn Thị Diệu Thiên" })
                     ]
                   }),
 
