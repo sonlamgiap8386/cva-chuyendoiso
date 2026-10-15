@@ -212,7 +212,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                     e.jsx("p", {
                       className: "text-xs text-emerald-300/70",
                       style: { fontFamily: "'Times New Roman', Times, serif" },
-                      children: "Mẫu chuẩn 3 phần: Phần đầu (Ảnh 1), Bảng 12 cột (Ảnh 2), Chữ ký mộc đỏ (Ảnh 3)"
+                      children: "Mẫu chuẩn 3 phần: Phần đầu (Ảnh 1), Bảng 12 cột (Ảnh 2), Chữ ký dấu (Ảnh 3)"
                     })
                   ]
                 })
@@ -279,7 +279,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                       onChange: e => D(e.target.checked),
                       className: "accent-amber-400 rounded cursor-pointer"
                     }),
-                    e.jsx("span", { className: "font-semibold text-amber-300", children: "Đóng dấu mộc đỏ" })
+                    e.jsx("span", { className: "font-semibold text-amber-300", children: "Đóng dấu" })
                   ]
                 }),
                 e.jsxs("label", {
@@ -291,7 +291,7 @@ const ie = ({ isOpen: A, onClose: N, scores: j, period: u, departments: p, curre
                       onChange: e => G(e.target.checked),
                       className: "accent-teal-400 rounded cursor-pointer"
                     }),
-                    e.jsx("span", { className: "font-semibold text-teal-300", children: "Chữ ký điện tử BGH" })
+                    e.jsx("span", { className: "font-semibold text-teal-300", children: "Chữ ký BGH" })
                   ]
                 }),
                 e.jsxs("div", {
