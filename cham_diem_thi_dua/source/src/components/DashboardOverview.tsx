@@ -271,6 +271,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           selectedPeriod={selectedPeriod}
           onChangePeriod={handlePeriodChange}
           showAnnual={true}
+          className="dashboard-overview-periods"
         />
       </div>
 
