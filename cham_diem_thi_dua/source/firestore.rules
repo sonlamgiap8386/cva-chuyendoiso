@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function claim(name) {
+      return request.auth.token.get(name, null);
+    }
+    function staffId() { return claim('staffId'); }
+    function departmentId() { return claim('departmentId'); }
+    function validIdentity() {
+      return request.auth != null
+        && claim('role') in ['bgh', 'ttcm', 'btd', 'gv']
+        && staffId() is string && staffId().matches('^[^/]+$');
+    }
+    function profileMatches() {
+      let profile = get(/databases/$(database)/documents/users/$(staffId())).data;
+      return profile.get('status', 'active') == 'active'
+        && profile.role == claim('role')
+        && (claim('role') != 'ttcm' || profile.departmentId == departmentId());
+    }
+    function activeStaff() { return validIdentity() && profileMatches(); }
+    function isAdmin() { return activeStaff() && claim('role') == 'bgh'; }
+    function sameDepartment(data) {
+      return claim('role') == 'ttcm' && departmentId() is string && departmentId() == data.departmentId;
+    }
+
+    match /users/{id} {
+      function passwordFields() { return ['customPassword', 'passwordUpdatedAt']; }
+      // Tài khoản được phép đọc hồ sơ của chính mình để biết trạng thái khóa.
+      allow get: if validIdentity() && (id == staffId() || (profileMatches() && (claim('role') == 'bgh' || sameDepartment(resource.data))));
+      allow list: if activeStaff() && (claim('role') == 'bgh' || sameDepartment(resource.data));
+      allow create: if isAdmin() && !request.resource.data.keys().hasAny(passwordFields());
+      allow update: if isAdmin()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(passwordFields());
+      allow delete: if isAdmin();
+    }
+
+    match /departments/{id} {
+      allow read: if activeStaff();
+      allow write: if isAdmin();
+    }
+
+    match /scores/{id} {
+      function legacyContribution(item) {
+        let raw = item.points * item.quantity;
+        let cap = item.get('criterionId', '') == '' ? 10 : item.get('maxAllowed', raw);
+        return item.points > 0 && raw > 0 && raw <= 1500 && cap >= 0 && cap <= 1500
+          ? (raw < cap ? raw : cap)
+          : -1000000;
+      }
+      function contribution(item) {
+        return 'creditedPoints' in item
+          ? ((item.creditedPoints >= 0 && item.creditedPoints <= item.points * item.quantity
+            && (item.creditedPoints <= 10 || item.get('criterionId', '') != ''))
+              ? item.creditedPoints : -1000000)
+          : legacyContribution(item);
+      }
+      // Firestore Rules không hỗ trợ vòng lặp. Kiểm tra từng mục để đối chiếu tổng điểm.
+      function sumItems(items) {
+        let length = items.size();
+        return length == 0 ? 0 : contribution(items[0])
+          + (length > 1 ? contribution(items[1]) : 0)
+          + (length > 2 ? contribution(items[2]) : 0)
+          + (length > 3 ? contribution(items[3]) : 0)
+          + (length > 4 ? contribution(items[4]) : 0)
+          + (length > 5 ? contribution(items[5]) : 0)
+          + (length > 6 ? contribution(items[6]) : 0)
+          + (length > 7 ? contribution(items[7]) : 0);
+      }
+      function scoreFields() {
+        return ['bonusItems', 'penaltyItems', 'totalBonus', 'totalPenalty', 'totalScore', 'baseScore'];
+      }
+      function validScore(data) {
+        return data.staffId is string && data.departmentId is string
+          && data.month is int && data.month >= 1 && data.month <= 12 && data.year is string
+          && data.baseScore is number
+          && data.bonusItems is list && data.penaltyItems is list
+          && data.bonusItems.size() + data.penaltyItems.size() <= 8
+          && data.totalBonus is number && data.totalBonus >= 0
+          && data.totalPenalty is number && data.totalPenalty >= 0
+          && data.totalScore is number && data.totalScore >= 0
+          && math.abs(data.totalBonus - sumItems(data.bonusItems)) < 0.001
+          && math.abs(data.totalPenalty - sumItems(data.penaltyItems)) < 0.001
+          && math.abs(data.totalScore - (data.baseScore + data.totalBonus - data.totalPenalty)) < 0.001;
+      }
+      function leaderEditableFields() {
+        return ['bonusItems', 'penaltyItems', 'totalBonus', 'totalPenalty', 'totalScore',
+          'status', 'reviewedBy', 'reviewedByName', 'reviewedAt'];
+      }
+      function validChanges() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(scoreFields())
+          || validScore(request.resource.data);
+      }
+      function validApproval() {
+        let data = request.resource.data;
+        return data.bghApprovedScore is number && data.bghApprovedScore >= 0 && data.bghApprovedScore <= 300;
+      }
+      function adminScoreUpdate() {
+        return claim('role') == 'bgh' && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['staffName', 'staffCode', 'departmentId', 'departmentName', 'position'])
+          || (request.resource.data.status in ['draft', 'submitted'] && resource.data.status in ['draft', 'submitted'] && validChanges())
+          || (request.resource.data.status == 'approved' && resource.data.status != 'locked' && validApproval()
+            && (resource.data.status == 'approved' ? validChanges() : validScore(request.resource.data)))
+          || (request.resource.data.status == 'locked'
+            && (resource.data.status == 'approved' || resource.data.status == 'locked')
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+              ['bonusItems', 'penaltyItems', 'totalBonus', 'totalPenalty', 'totalScore', 'baseScore', 'bghApprovedScore']))
+        );
+      }
+      function leaderScoreUpdate() {
+        return sameDepartment(resource.data) && sameDepartment(request.resource.data)
+          && resource.data.status in ['draft', 'submitted']
+          && request.resource.data.status in ['draft', 'submitted']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(leaderEditableFields())
+          && (request.resource.data.status == 'submitted' ? validScore(request.resource.data) : validChanges());
+      }
+      function ownFeedbackUpdate() {
+        return resource.data.staffId == staffId()
+          && resource.data.status != 'locked'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback'])
+          && request.resource.data.feedback is string && request.resource.data.feedback.size() <= 2000;
+      }
+      allow get, list: if activeStaff() && (claim('role') == 'bgh' || resource.data.staffId == staffId() || sameDepartment(resource.data));
+      allow create: if isAdmin() && request.resource.data.status == 'draft' && validScore(request.resource.data);
+      allow delete: if isAdmin();
+      allow update: if activeStaff() && (ownFeedbackUpdate() || adminScoreUpdate() || leaderScoreUpdate());
+    }
+
+    match /rankings/{docId} {
+      allow read: if activeStaff();
+      allow write: if isAdmin();
+    }
+
+    match /criteria/{docId} {
+      allow read: if activeStaff();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['items', 'revision'])
+        && request.resource.data.revision is int && request.resource.data.revision > 0
+        && request.resource.data.items is list && request.resource.data.items.size() <= 300;
+      allow delete: if isAdmin();
+    }
+
+    match /system_meta/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

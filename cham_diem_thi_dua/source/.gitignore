@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.qa/
+.word-check-build/
+.word-check-output/
+.pdf-check-build/
+.pdf-check-output/
+*-debug.log
+.env*
+!.env.example
+*service-account*.json
+*serviceAccount*.json
