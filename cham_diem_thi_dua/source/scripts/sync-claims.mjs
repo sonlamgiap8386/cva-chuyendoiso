@@ -10,13 +10,15 @@ const applying = flag === '--apply';
 const app = initializeApp({ projectId: project });
 const auth = getAuth(app);
 const db = getFirestore(app);
+const normalizeEmail = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const isDepartmentId = value => typeof value === 'string' && Boolean(value) && value.trim() === value && !value.includes('/');
 
 try {
   const snapshot = await db.collection('users').get();
   const profiles = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
   const emailCounts = new Map();
   for (const profile of profiles) {
-    const email = profile.email?.trim().toLowerCase();
+    const email = normalizeEmail(profile.email);
     if (email) emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
   }
 
@@ -24,9 +26,9 @@ try {
   let skipped = 0;
   const legacy = profiles.filter(profile => 'customPassword' in profile || 'passwordUpdatedAt' in profile).length;
   for (const profile of profiles) {
-    const email = profile.email?.trim().toLowerCase();
+    const email = normalizeEmail(profile.email);
     if (!email || emailCounts.get(email) !== 1 || !['bgh', 'ttcm', 'btd', 'gv'].includes(profile.role) ||
-        (profile.role === 'ttcm' && typeof profile.departmentId !== 'string')) {
+        (profile.role === 'ttcm' && !isDepartmentId(profile.departmentId))) {
       skipped++;
       continue;
     }
