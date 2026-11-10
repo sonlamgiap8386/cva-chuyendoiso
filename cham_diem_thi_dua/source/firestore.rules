@@ -40,7 +40,7 @@ service cloud.firestore {
     }
 
     match /scores/{id} {
-      function legacyContribution(item) {
+      function contributionWithoutCredit(item) {
         let raw = item.points * item.quantity;
         let cap = item.get('criterionId', '') == '' ? 10 : item.get('maxAllowed', raw);
         return item.points > 0 && raw > 0 && raw <= 1500 && cap >= 0 && cap <= 1500
@@ -49,10 +49,10 @@ service cloud.firestore {
       }
       function contribution(item) {
         return 'creditedPoints' in item
-          ? ((item.creditedPoints >= 0 && item.creditedPoints <= item.points * item.quantity
+          ? ((item.creditedPoints >= 0 && item.creditedPoints <= 1500 && item.creditedPoints <= item.points * item.quantity
             && (item.creditedPoints <= 10 || item.get('criterionId', '') != ''))
               ? item.creditedPoints : -1000000)
-          : legacyContribution(item);
+          : contributionWithoutCredit(item);
       }
       // Firestore Rules không hỗ trợ vòng lặp. Kiểm tra từng mục để đối chiếu tổng điểm.
       function sumItems(items) {
@@ -69,18 +69,28 @@ service cloud.firestore {
       function scoreFields() {
         return ['bonusItems', 'penaltyItems', 'totalBonus', 'totalPenalty', 'totalScore', 'baseScore'];
       }
-      function validScore(data) {
+      function validRecordedTotals(data) {
         return data.staffId is string && data.departmentId is string
           && data.month is int && data.month >= 1 && data.month <= 12 && data.year is string
           && data.baseScore is number
           && data.bonusItems is list && data.penaltyItems is list
-          && data.bonusItems.size() + data.penaltyItems.size() <= 8
           && data.totalBonus is number && data.totalBonus >= 0
           && data.totalPenalty is number && data.totalPenalty >= 0
           && data.totalScore is number && data.totalScore >= 0
-          && math.abs(data.totalBonus - sumItems(data.bonusItems)) < 0.001
-          && math.abs(data.totalPenalty - sumItems(data.penaltyItems)) < 0.001
           && math.abs(data.totalScore - (data.baseScore + data.totalBonus - data.totalPenalty)) < 0.001;
+      }
+      function validScore(data) {
+        return validRecordedTotals(data)
+          && data.bonusItems.size() + data.penaltyItems.size() <= 8
+          && math.abs(data.totalBonus - sumItems(data.bonusItems)) < 0.001
+          && math.abs(data.totalPenalty - sumItems(data.penaltyItems)) < 0.001;
+      }
+      function submissionFields() { return ['status', 'reviewedBy', 'reviewedByName', 'reviewedAt']; }
+      function approvalFields() { return ['status', 'bghApprovedScore', 'bghNotes', 'approvedBy', 'approvedByName', 'approvedAt']; }
+      // Chuyển trạng thái cho điểm đã lưu theo quy chế cũ. Không cho ghi lại các mục hoặc tổng điểm qua nhánh này.
+      function reviewOfRecordedScore(fields) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields)
+          && validRecordedTotals(resource.data);
       }
       function leaderEditableFields() {
         return ['bonusItems', 'penaltyItems', 'totalBonus', 'totalPenalty', 'totalScore',
@@ -100,7 +110,8 @@ service cloud.firestore {
             ['staffName', 'staffCode', 'departmentId', 'departmentName', 'position'])
           || (request.resource.data.status in ['draft', 'submitted'] && resource.data.status in ['draft', 'submitted'] && validChanges())
           || (request.resource.data.status == 'approved' && resource.data.status != 'locked' && validApproval()
-            && (resource.data.status == 'approved' ? validChanges() : validScore(request.resource.data)))
+            && (resource.data.status == 'approved' ? validChanges()
+              : (reviewOfRecordedScore(approvalFields()) || validScore(request.resource.data))))
           || (request.resource.data.status == 'locked'
             && (resource.data.status == 'approved' || resource.data.status == 'locked')
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
@@ -112,7 +123,9 @@ service cloud.firestore {
           && resource.data.status in ['draft', 'submitted']
           && request.resource.data.status in ['draft', 'submitted']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(leaderEditableFields())
-          && (request.resource.data.status == 'submitted' ? validScore(request.resource.data) : validChanges());
+          && (request.resource.data.status == 'submitted'
+            ? (reviewOfRecordedScore(submissionFields()) || validScore(request.resource.data))
+            : validChanges());
       }
       function ownFeedbackUpdate() {
         return resource.data.staffId == staffId()
@@ -138,6 +151,11 @@ service cloud.firestore {
         && request.resource.data.revision is int && request.resource.data.revision > 0
         && request.resource.data.items is list && request.resource.data.items.size() <= 300;
       allow delete: if isAdmin();
+    }
+
+    // Đọc tiêu chí từ phiên bản cũ khi chưa có criteria/default.
+    match /settings/criteria {
+      allow get: if activeStaff();
     }
 
     match /system_meta/{docId} {

@@ -54,3 +54,15 @@ test('malformed documents are ignored instead of crashing the leaderboard', () =
   assert.deepEqual(rankingDocToRecords({ year: '2026-2027', month: 9, entries: [{ staffId: 'x' }, null, 5] }), []);
   assert.equal(rankingDocId('2026-2027', 9), '2026-2027_9');
 });
+
+test('republishing keeps only previously published lock-only results that still exist', () => {
+  const year = '2026-2027';
+  const locked = rec({ staffId: 'locked-old', status: 'locked', totalScore: 232 });
+  const legacyEntry = { staffId: locked.staffId, status: 'locked', score: 234, feedback: 'must not be published' };
+  const prior = { year, month: 9, entries: [legacyEntry, { ...legacyEntry, staffId: 'deleted' }] };
+  const result = buildRankingDoc([locked, rec({ staffId: 'unpublished', status: 'locked' })], year, 9, new Date(), prior);
+  assert.deepEqual(result.entries.map(({ staffId, score }) => [staffId, score]), [['locked-old', 234]]);
+  assert.ok(!('feedback' in result.entries[0]));
+  assert.equal(buildRankingDoc([locked], year, 9, new Date(), { ...prior, month: 10 }).entries.length, 0);
+  assert.equal(buildRankingDoc([{ ...locked, status: 'draft' }], year, 9, new Date(), prior).entries.length, 0);
+});

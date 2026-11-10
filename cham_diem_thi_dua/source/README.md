@@ -23,9 +23,10 @@ Kiểm thử quy tắc dùng Firestore Emulator và dự án giả `demo-cva`. K
 
 - Tạo ít nhất một tài khoản BGH có hồ sơ và quyền khớp trước khi áp dụng quy tắc mới. Kiểm tra các tài khoản còn thiếu quyền hoặc có email trùng. Trình duyệt chỉ đăng nhập tài khoản đã được tạo trong Firebase Authentication.
 - Với dữ liệu phiên bản cũ, sau khi có bản sao lưu và được quản trị viên duyệt, xử lý riêng các trường `customPassword`, `passwordUpdatedAt` và bộ sưu tập `user_passwords` nếu có. Đặt lại mọi mật khẩu cũ dùng chung hoặc từng lưu dưới dạng rõ. Công cụ cấp quyền không đọc lại giá trị mật khẩu ra màn hình, không đổi mật khẩu và không sửa hồ sơ Firestore.
-- Kiểm tra hồ sơ điểm cũ có dữ liệu bất thường trước khi duyệt. Hồ sơ tháng được sửa hoặc nộp theo quy tắc mới có tối đa 8 mục cộng và trừ. Trần theo học kỳ được tính ở giao diện. Firestore kiểm tra tổng tháng khớp các mục và giới hạn ghi theo vai trò. Với bảng xếp hạng đã công bố từ bản cũ, đối chiếu lại hồ sơ từng tháng trước khi mở cho người dùng.
+- Hồ sơ cũ được nộp hoặc duyệt theo các tổng điểm đã lưu nếu chúng khớp với nhau. Khi sửa nội dung điểm, giới hạn mới là tối đa 8 mục cộng và trừ tính chung. Trần theo học kỳ được tính ở giao diện. Hồ sơ có tổng điểm không khớp cần được đối chiếu trước khi nộp hoặc duyệt. Kết quả khóa sổ cũ thiếu thông tin duyệt chỉ được giữ trong bảng xếp hạng nếu đã từng xuất hiện trong bảng công bố.
+- Khi chưa có `criteria/default`, ứng dụng đọc `settings/criteria` của phiên bản trước. Lần lưu do BGH thực hiện ghi vào `criteria/default` và giữ nguyên bộ tiêu chí ở đường dẫn cũ.
 - Bản chụp JSON chỉ chứa điểm và ghi chú. BGH có thể tải bản chụp trong phiên làm việc để đối chiếu. Khôi phục chính thức thực hiện theo [hướng dẫn xuất và nhập của Firestore](https://firebase.google.com/docs/firestore/manage-data/export-import). Diễn tập nhập bản sao lưu vào dự án thử nghiệm và đối chiếu số hồ sơ, điểm, quyền và bảng xếp hạng. Danh mục tài khoản Firebase Authentication, quyền và cấu hình là phần riêng của kế hoạch khôi phục.
-- Trên máy dùng chung đã chạy bản cũ, quản trị viên cần kiểm kê bản chụp cũ trong bộ nhớ trình duyệt và các tệp JSON đã tải xuống. Giao diện mới không đọc các bản chụp cũ.
+- BGH có thể đối chiếu số hồ sơ và năm học của tệp JSON cũ hoặc mới ngay trên thiết bị. Ứng dụng không tự nhập tệp hay xóa dữ liệu điểm lưu bởi phiên bản cũ trong trình duyệt.
 
 Sau khi môi trường thử nghiệm đạt các điều kiện trên, dùng đúng cấu hình của dự án cần phát hành và kiểm tra lại đích trước khi thực hiện lệnh triển khai.
 

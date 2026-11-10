@@ -1,4 +1,4 @@
-import { MonthlyScoreRecord, CloudBackup, AppNotification } from '../types';
+import type { MonthlyScoreRecord, CloudBackup, AppNotification } from '../types';
 
 const NOTIFS_KEY = 'cva_thidua_notifs_v1';
 export const MAX_LOCAL_BACKUPS = 5;
@@ -50,12 +50,23 @@ export function createCloudSnapshot(
   return backup;
 }
 
-/** Xóa dữ liệu cũ do các phiên bản trước để lại trong trình duyệt (hồ sơ người dùng, điểm mẫu). */
-export function purgeLegacyStorage(): void {
-  try {
-    localStorage.removeItem('cva_auth_user_v1');
-    localStorage.removeItem('cva_thidua_scores_v4');
-  } catch {
-    /* localStorage không khả dụng */
+/** Đối chiếu tệp JSON tải từ bản cũ hoặc bản mới, không ghi dữ liệu vào ứng dụng. */
+export function inspectScoreSnapshot(text: string) {
+  const payload = JSON.parse(text.replace(/^\uFEFF/, ''));
+  const records: unknown[] = Array.isArray(payload) ? payload : payload?.records;
+  if (!Array.isArray(records)) throw new Error('Tệp không chứa danh sách bản ghi điểm.');
+  const staff = new Set<string>();
+  const years = new Set<string>();
+  for (const [index, record] of records.entries()) {
+    const row = record as Partial<MonthlyScoreRecord> | null;
+    if (!row || typeof row.staffId !== 'string' || !row.staffId.trim() ||
+        typeof row.year !== 'string' || !row.year.trim() ||
+        typeof row.month !== 'number' || !Number.isInteger(row.month) || row.month < 1 || row.month > 12 ||
+        typeof row.totalScore !== 'number' || !Number.isFinite(row.totalScore)) {
+      throw new Error(`Bản ghi ${index + 1} thiếu thông tin hoặc sai định dạng điểm.`);
+    }
+    staff.add(row.staffId);
+    years.add(row.year);
   }
+  return { recordsCount: records.length, staffCount: staff.size, years: [...years].sort() };
 }

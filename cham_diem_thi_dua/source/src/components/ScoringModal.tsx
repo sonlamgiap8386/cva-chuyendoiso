@@ -23,7 +23,7 @@ import { classifyEmulationRecord, compareEmulationScores, formatMonthName, getSe
 interface ScoringModalProps {
   record: MonthlyScoreRecord | null;
   onClose: () => void;
-  onSave: (updatedRecord: MonthlyScoreRecord) => Promise<void>;
+  onSave: (updatedRecord: MonthlyScoreRecord, unchangedScore?: MonthlyScoreRecord) => Promise<void>;
   onSaveFeedback: (id: string, feedback: string) => Promise<void>;
   currentUser: UserProfile;
   criteria: CriterionItem[];
@@ -150,10 +150,20 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
     };
   };
 
-  // Calculate live effective totals with semester capping
-  const totalBonus = bonusItems.reduce((sum, item) => sum + getItemEffectivePoints(item, 'bonus').effectivePoints, 0);
-  const totalPenalty = penaltyItems.reduce((sum, item) => sum + getItemEffectivePoints(item, 'penalty').effectivePoints, 0);
-  const calculatedTotal = record.baseScore + totalBonus - totalPenalty;
+  const hasScoreEdits = JSON.stringify(bonusItems) !== JSON.stringify(record.bonusItems) ||
+    JSON.stringify(penaltyItems) !== JSON.stringify(record.penaltyItems);
+  // Đọc điểm đã lưu cho tới khi người dùng thực sự sửa một mục điểm.
+  const totalBonus = hasScoreEdits ? bonusItems.reduce((sum, item) => sum + getItemEffectivePoints(item, 'bonus').effectivePoints, 0) : record.totalBonus;
+  const totalPenalty = hasScoreEdits ? penaltyItems.reduce((sum, item) => sum + getItemEffectivePoints(item, 'penalty').effectivePoints, 0) : record.totalPenalty;
+  const calculatedTotal = hasScoreEdits ? record.baseScore + totalBonus - totalPenalty : record.totalScore;
+
+  const itemPointLabel = (item: ScoreItemDetail, kind: 'bonus' | 'penalty', calculated?: number) => {
+    const sign = kind === 'bonus' ? '+' : '-';
+    const points = calculated ?? item.creditedPoints;
+    return points === undefined
+      ? `${sign}${item.points * item.quantity}đ (điểm gốc)`
+      : `${sign}${points}đ`;
+  };
 
   const isBgh = currentUser.role === 'bgh';
   const isTtcm = currentUser.role === 'ttcm';
@@ -403,48 +413,21 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
     if (!canEditScores || saving) return;
     setValidationError(null);
     setLimitWarning(null);
-    if (bonusItems.length + penaltyItems.length > 8) {
+    if (hasScoreEdits && bonusItems.length + penaltyItems.length > 8) {
       setValidationError('Mỗi hồ sơ tháng lưu tối đa 8 mục cộng và trừ. Vui lòng gộp các mục cùng nội dung.');
       return;
     }
 
-    // 1. Validation cho danh sách điểm thưởng
-    for (const item of bonusItems) {
-      if (typeof item.points !== 'number' || isNaN(item.points) || item.points <= 0) {
-        setValidationError(`Mục thưởng "${item.title}" có điểm (${item.points}) không hợp lệ. Điểm phải là số dương lớn hơn 0.`);
-        return;
-      }
-      if (item.points > 50) {
-        setValidationError(`Mục thưởng "${item.title}" có điểm (${item.points}đ) vượt quá giới hạn tối đa 50đ/mục.`);
-        return;
-      }
-      if (typeof item.quantity !== 'number' || isNaN(item.quantity) || item.quantity < 1 || !Number.isInteger(item.quantity)) {
-        setValidationError(`Mục thưởng "${item.title}" có số lần không hợp lệ. Số lần phải là số nguyên từ 1 đến 30.`);
-        return;
-      }
-      if (item.quantity > 30) {
-        setValidationError(`Mục thưởng "${item.title}" có số lần (${item.quantity}) vượt quá 30 lần trong một tháng.`);
-        return;
-      }
-    }
-
-    // 2. Validation cho danh sách điểm trừ vi phạm
-    for (const item of penaltyItems) {
-      if (typeof item.points !== 'number' || isNaN(item.points) || item.points <= 0) {
-        setValidationError(`Mục trừ vi phạm "${item.title}" có điểm (${item.points}) không hợp lệ. Điểm phải là số dương lớn hơn 0.`);
-        return;
-      }
-      if (item.points > 50) {
-        setValidationError(`Mục trừ vi phạm "${item.title}" có điểm (${item.points}đ) vượt quá mức phạt tối đa 50đ/mục.`);
-        return;
-      }
-      if (typeof item.quantity !== 'number' || isNaN(item.quantity) || item.quantity < 1 || !Number.isInteger(item.quantity)) {
-        setValidationError(`Mục trừ vi phạm "${item.title}" có số lần không hợp lệ. Số lần phải là số nguyên từ 1 đến 30.`);
-        return;
-      }
-      if (item.quantity > 30) {
-        setValidationError(`Mục trừ vi phạm "${item.title}" có số lần vi phạm (${item.quantity}) vượt quá 30 lần trong một tháng.`);
-        return;
+    if (hasScoreEdits) {
+      for (const item of [...bonusItems, ...penaltyItems]) {
+        if (!Number.isFinite(item.points) || item.points <= 0 || item.points > 50) {
+          setValidationError(`Mục "${item.title}" phải có mức điểm lớn hơn 0 và không quá 50.`);
+          return;
+        }
+        if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 30) {
+          setValidationError(`Mục "${item.title}" phải có số lần là số nguyên từ 1 đến 30.`);
+          return;
+        }
       }
     }
 
@@ -457,15 +440,15 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
     }
 
     // 4. Validation tổng điểm sau tính toán
-    if (isNaN(calculatedTotal) || calculatedTotal < 0) {
+    if (!Number.isFinite(calculatedTotal) || calculatedTotal < 0) {
       setValidationError(`Tổng điểm thi đua (${calculatedTotal}đ) không hợp lệ. Điểm thi đua của cán bộ không được nhỏ hơn 0.`);
       return;
     }
 
     const updated: MonthlyScoreRecord = {
       ...record,
-      bonusItems: bonusItems.map(item => ({ ...item, creditedPoints: getItemEffectivePoints(item, 'bonus').effectivePoints })),
-      penaltyItems: penaltyItems.map(item => ({ ...item, creditedPoints: getItemEffectivePoints(item, 'penalty').effectivePoints })),
+      bonusItems: hasScoreEdits ? bonusItems.map(item => ({ ...item, creditedPoints: getItemEffectivePoints(item, 'bonus').effectivePoints })) : record.bonusItems,
+      penaltyItems: hasScoreEdits ? penaltyItems.map(item => ({ ...item, creditedPoints: getItemEffectivePoints(item, 'penalty').effectivePoints })) : record.penaltyItems,
       totalBonus,
       totalPenalty,
       totalScore: calculatedTotal,
@@ -475,10 +458,8 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
       reviewedAt: isTtcm ? new Date().toLocaleString('vi-VN') : record.reviewedAt,
     };
 
-    const finalApprovedScore = isBgh
-      ? bghApprovedScore
-      : newStatus === 'approved'
-      ? calculatedTotal
+    const finalApprovedScore = isBgh && newStatus === 'approved'
+      ? bghApprovedScore ?? calculatedTotal
       : record.bghApprovedScore;
     if (finalApprovedScore !== undefined) {
       updated.bghApprovedScore = Math.min(300, Math.max(0, finalApprovedScore));
@@ -499,7 +480,7 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
       updated.approvedAt = record.approvedAt;
     }
 
-    await persist(() => onSave(updated));
+    await persist(() => onSave(updated, hasScoreEdits ? undefined : record));
   };
 
   const persist = async (operation: () => Promise<void>) => {
@@ -617,16 +598,13 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                   <tr>
                     <td className="p-2 border-r border-stone-200 font-semibold text-emerald-900">
                       2. Tổng điểm thưởng / Điểm cộng ({semesterName})
-                      {bonusItems.length > 0 && (
+                      {record.bonusItems.length > 0 && (
                         <div className="text-[11px] font-normal text-stone-600 mt-1 pl-2 space-y-0.5">
-                          {bonusItems.map((b, i) => {
-                            const eff = getItemEffectivePoints(b, 'bonus');
-                            return (
+                          {record.bonusItems.map((b, i) => (
                               <div key={i}>
-                                • {b.title}: +{b.creditedPoints ?? eff.effectivePoints}đ {b.note ? `(${b.note})` : ''}
+                                • {b.title}: {itemPointLabel(b, 'bonus')} {b.note ? `(${b.note})` : ''}
                               </div>
-                            );
-                          })}
+                          ))}
                         </div>
                       )}
                     </td>
@@ -636,16 +614,13 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                   <tr>
                     <td className="p-2 border-r border-stone-200 font-semibold text-rose-900">
                       3. Tổng điểm trừ / Vi phạm nề nếp ({semesterName})
-                      {penaltyItems.length > 0 && (
+                      {record.penaltyItems.length > 0 && (
                         <div className="text-[11px] font-normal text-stone-600 mt-1 pl-2 space-y-0.5">
-                          {penaltyItems.map((p, i) => {
-                            const eff = getItemEffectivePoints(p, 'penalty');
-                            return (
+                          {record.penaltyItems.map((p, i) => (
                               <div key={i}>
-                                • {p.title}: -{p.creditedPoints ?? eff.effectivePoints}đ {p.note ? `(${p.note})` : ''}
+                                • {p.title}: {itemPointLabel(p, 'penalty')} {p.note ? `(${p.note})` : ''}
                               </div>
-                            );
-                          })}
+                          ))}
                         </div>
                       )}
                     </td>
@@ -874,7 +849,7 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                       <div
                         key={item.id}
                         className={`bg-[#031713] p-2.5 rounded-xl border flex flex-col gap-1.5 shadow-xs text-xs ${
-                          eff.isOverLimit ? 'border-amber-400/80 bg-[#1c1806]' : 'border-[#0e4438]'
+                          hasScoreEdits && eff.isOverLimit ? 'border-amber-400/80 bg-[#1c1806]' : 'border-[#0e4438]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -884,7 +859,7 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                             </div>
                             <div className="text-[11px] text-stone-400 flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span className="font-mono font-bold text-emerald-400">
-                                Tính: +{eff.effectivePoints}đ
+                                {itemPointLabel(item, 'bonus', hasScoreEdits ? eff.effectivePoints : undefined)}
                               </span>
                               {item.quantity > 1 && (
                                 <span className="text-stone-400">
@@ -987,7 +962,7 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                       <div
                         key={item.id}
                         className={`bg-[#031713] p-2.5 rounded-xl border flex flex-col gap-1.5 shadow-xs text-xs ${
-                          eff.isOverLimit ? 'border-amber-400/80 bg-[#1c1806]' : 'border-[#0e4438]'
+                          hasScoreEdits && eff.isOverLimit ? 'border-amber-400/80 bg-[#1c1806]' : 'border-[#0e4438]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -997,7 +972,7 @@ export const ScoringModal: React.FC<ScoringModalProps> = ({
                             </div>
                             <div className="text-[11px] text-stone-400 flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span className="font-mono font-bold text-rose-400">
-                                Tính: -{eff.effectivePoints}đ
+                                {itemPointLabel(item, 'penalty', hasScoreEdits ? eff.effectivePoints : undefined)}
                               </span>
                               {item.quantity > 1 && (
                                 <span className="text-stone-400">

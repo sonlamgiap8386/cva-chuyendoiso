@@ -39,7 +39,6 @@ import {
   loadNotifications,
   saveNotifications,
   createCloudSnapshot,
-  purgeLegacyStorage,
   MAX_LOCAL_BACKUPS,
 } from './utils/storage';
 import {
@@ -58,7 +57,7 @@ import {
   type SharedCriteria,
 } from './firebase/firebaseService';
 import { useFirebaseSync, describeFirebaseError } from './hooks/useFirebaseSync';
-import { isOfficialResult } from './utils/rankings';
+import { isRankingCandidate } from './utils/rankings';
 import { getAuthorizationClaims, observeAuthState, signOutUser } from './firebase/authService';
 import { SCHOOL_YEAR_MONTHS } from './utils/academicYear';
 
@@ -115,8 +114,6 @@ export default function App() {
     console.error(`Lỗi khi ${action}:`, err);
     setBanner({ kind: 'error', text: `Không thể ${action}: ${describeFirebaseError(err)}` });
   }, []);
-
-  useEffect(() => { purgeLegacyStorage(); }, []);
 
   // Công bố lại bảng xếp hạng công khai cho các tháng bị ảnh hưởng (chỉ BGH được ghi).
   const republishRankings = useCallback((months: number[]) => {
@@ -197,7 +194,7 @@ export default function App() {
 
   const handleSaveCriteria = async (items: CriterionItem[]) => {
     if (staffRole !== 'bgh' || !sharedCriteria) throw new Error('Chưa tải được bộ tiêu chí hoặc tài khoản không có quyền sửa.');
-    await saveCriteria(items, sharedCriteria.revision);
+    await saveCriteria(items, sharedCriteria);
   };
 
   // Firestore is the source of truth. Browser storage is never used as an offline
@@ -253,7 +250,7 @@ export default function App() {
     const existing = scores.filter(score => score.staffId === staff.id);
     const canonicalStaff = { ...staff, code, email, avatar: SCHOOL_AVATAR };
     await saveStaffWithScores(canonicalStaff, existing, isNew ? buildDrafts(canonicalStaff) : []);
-    republishRankings(existing.filter(isOfficialResult).map(score => score.month));
+    republishRankings(existing.filter(isRankingCandidate).map(score => score.month));
     markSaved();
     if (isNew) setBanner({ kind: 'info', text: 'Đã thêm hồ sơ. Cấp tài khoản và quyền trong Firebase Authentication theo README.' });
   };
@@ -261,7 +258,7 @@ export default function App() {
   const handleDeleteStaff = async (staffId: string) => {
     if (currentUser?.role !== 'bgh' || staffId === currentUser.id) throw new Error('Không thể xóa hồ sơ này.');
     await deleteStaffFromFirestore(staffId);
-    republishRankings(scores.filter(score => score.staffId === staffId && isOfficialResult(score)).map(score => score.month));
+    republishRankings(scores.filter(score => score.staffId === staffId && isRankingCandidate(score)).map(score => score.month));
     markSaved();
     setBanner({ kind: 'info', text: 'Đã xóa hồ sơ và điểm. Vô hiệu hóa tài khoản tương ứng trong Firebase Authentication nếu còn tồn tại.' });
   };
@@ -295,7 +292,7 @@ export default function App() {
     try {
       for (const item of plan) {
         await saveStaffWithScores(item.staff, item.scores, item.isNew ? buildDrafts(item.staff) : []);
-        affectedMonths.push(...item.scores.filter(isOfficialResult).map(score => score.month));
+        affectedMonths.push(...item.scores.filter(isRankingCandidate).map(score => score.month));
         committed++;
       }
     } catch (error) {
@@ -377,10 +374,14 @@ export default function App() {
 
   const markSaved = () => setFirebaseStatus(previous => ({ ...previous, lastSyncedAt: new Date() }));
 
-  const handleSaveScoreRecord = async (record: MonthlyScoreRecord) => {
-    await saveSingleScoreToFirestore(record);
+  const handleSaveScoreRecord = async (record: MonthlyScoreRecord, unchangedScore?: MonthlyScoreRecord) => {
+    if (unchangedScore) await saveScoreReviewStates([unchangedScore], [record]);
+    else {
+      if (!sharedCriteria) throw new Error('Chưa tải được bộ tiêu chí. Vui lòng thử lại trước khi sửa điểm.');
+      await saveSingleScoreToFirestore(record);
+    }
     markSaved();
-    if (isOfficialResult(record)) republishRankings([record.month]);
+    if (isRankingCandidate(record)) republishRankings([record.month]);
   };
 
   const handleSaveFeedback = async (id: string, feedback: string) => {
@@ -392,7 +393,7 @@ export default function App() {
     try {
       await saveScoreReviewStates(before, after);
       markSaved();
-      republishRankings(after.filter(isOfficialResult).map(score => score.month));
+      republishRankings(after.filter(isRankingCandidate).map(score => score.month));
       return true;
     } catch (error) {
       reportSaveError(action, error);

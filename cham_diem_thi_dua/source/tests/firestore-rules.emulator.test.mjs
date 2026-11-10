@@ -136,6 +136,58 @@ test('maximum number of scoring items can be saved and a capped item cannot infl
   }));
 });
 
+test('reviewing records from the old scoring scheme preserves points and line items', async () => {
+  const manual = { id: 'custom', title: 'Cộng theo quy chế cũ', points: 12, quantity: 1, maxAllowed: 12 };
+  const oldManual = score({ id: 'old-manual', bonusItems: [manual], totalBonus: 12, totalScore: 242 });
+  const oldLong = score({ id: 'old-long', bonusItems: Array.from({ length: 9 }, (_, i) => ({ ...manual, id: `b${i}`, points: 1 })), totalBonus: 9, totalScore: 239 });
+  await env.withSecurityRulesDisabled(async ctx => {
+    for (const record of [oldManual, oldLong]) await setDoc(doc(ctx.firestore(), 'scores', record.id), record);
+  });
+  const leader = ttcmA();
+  const submit = writeBatch(leader);
+  for (const record of [oldManual, oldLong]) submit.update(doc(leader, 'scores', record.id), { status: 'submitted' });
+  await assertSucceeds(submit.commit());
+  const admin = bgh();
+  const approve = writeBatch(admin);
+  for (const record of [oldManual, oldLong]) approve.update(doc(admin, 'scores', record.id), { status: 'approved', bghApprovedScore: record.totalScore });
+  await assertSucceeds(approve.commit());
+  for (const record of [oldManual, oldLong]) {
+    assert.deepEqual((await getDoc(doc(admin, 'scores', record.id))).data(), { ...record, status: 'approved', bghApprovedScore: record.totalScore });
+  }
+});
+
+test('a review cannot write inconsistent or inflated points, or alter the locked result', async () => {
+  const malformed = score({ id: 'old-mismatch', totalBonus: 1, totalScore: 245 });
+  const closed = score({ id: 'old-closed', status: 'locked', totalScore: 230 });
+  await env.withSecurityRulesDisabled(async ctx => {
+    for (const record of [malformed, closed]) await setDoc(doc(ctx.firestore(), 'scores', record.id), record);
+  });
+  const leader = ttcmA();
+  const admin = bgh();
+  await assertFails(updateDoc(doc(leader, 'scores', malformed.id), { status: 'submitted' }));
+  await assertFails(updateDoc(doc(admin, 'scores', malformed.id), { status: 'approved', bghApprovedScore: 245 }));
+  await assertFails(updateDoc(doc(admin, 'scores', closed.id), { status: 'approved', bghApprovedScore: 230 }));
+  const manual = { id: 'custom', title: 'Cộng mới vượt trần', points: 12, quantity: 1, creditedPoints: 12 };
+  await assertFails(updateDoc(doc(leader, 'scores', 's1'), { status: 'submitted', bonusItems: [manual], totalBonus: 12, totalScore: 242 }));
+  await assertFails(updateDoc(doc(admin, 'scores', 's1'), { status: 'approved', bghApprovedScore: 242, bonusItems: [manual], totalBonus: 12, totalScore: 242 }));
+});
+
+test('legacy criteria are readable by active staff without granting legacy settings writes', async () => {
+  const old = { items: [{ id: 'custom', title: 'Tiêu chí cũ' }], updatedAt: '2026-09-01' };
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'settings', 'criteria'), old);
+    await setDoc(doc(ctx.firestore(), 'settings', 'private'), { sample: true });
+  });
+  const admin = bgh();
+  assert.deepEqual((await assertSucceeds(getDoc(doc(gv1(), 'settings', 'criteria')))).data(), old);
+  await assertFails(getDoc(doc(noClaims(), 'settings', 'criteria')));
+  await assertFails(getDoc(doc(admin, 'settings', 'private')));
+  await assertFails(getDocs(collection(admin, 'settings')));
+  await assertFails(updateDoc(doc(admin, 'settings', 'criteria'), { items: [] }));
+  await assertSucceeds(setDoc(doc(admin, 'criteria', 'default'), { items: old.items, revision: 1 }));
+  assert.deepEqual((await getDoc(doc(admin, 'settings', 'criteria'))).data(), old);
+});
+
 test('BGH can lock 104 approved score records in a single batch', async () => {
   const ids = Array.from({ length: 104 }, (_, index) => `qa-lock-${index}`);
   await env.withSecurityRulesDisabled(async context => {

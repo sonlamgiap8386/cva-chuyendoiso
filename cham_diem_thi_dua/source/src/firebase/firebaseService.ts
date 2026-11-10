@@ -405,28 +405,54 @@ export function observeStaffProfile(staffId: string, onChange: (staff: UserProfi
 export interface SharedCriteria {
   items: CriterionItem[];
   revision: number;
+  legacyUpdatedAt?: string | null;
 }
 
 export function subscribeToCriteria(onChange: (criteria: SharedCriteria) => void, onError: (error: Error) => void) {
-  return onSnapshot(doc(db, 'criteria', 'default'), { includeMetadataChanges: true }, snapshot => {
+  let stopLegacy: Unsubscribe | undefined;
+  const stopCurrent = onSnapshot(doc(db, 'criteria', 'default'), { includeMetadataChanges: true }, snapshot => {
     if (snapshot.metadata.fromCache) return;
     const data = snapshot.data();
-    if (data && (!Array.isArray(data.items) || !Number.isInteger(data.revision))) {
+    if (!data) {
+      stopLegacy ??= onSnapshot(doc(db, 'settings', 'criteria'), { includeMetadataChanges: true }, legacy => {
+        if (legacy.metadata.fromCache) return;
+        const old = legacy.data();
+        if (old && (!Array.isArray(old.items) || typeof old.updatedAt !== 'string')) {
+          onError(new Error('Bộ tiêu chí cũ trên Firestore có định dạng không hợp lệ.'));
+          return;
+        }
+        onChange({ items: old?.items.length ? old.items : CRITERIA_LIST, revision: 0, legacyUpdatedAt: old?.updatedAt ?? null });
+      }, onError);
+      return;
+    }
+    stopLegacy?.();
+    stopLegacy = undefined;
+    if (!Array.isArray(data.items) || !Number.isInteger(data.revision) || data.revision < 1) {
       onError(new Error('Bộ tiêu chí trên Firestore có định dạng không hợp lệ.'));
       return;
     }
-    onChange(data ? data as SharedCriteria : { items: CRITERIA_LIST, revision: 0 });
+    onChange({ items: data.items, revision: data.revision });
   }, onError);
+  return () => {
+    stopCurrent();
+    stopLegacy?.();
+  };
 }
 
-export async function saveCriteria(items: CriterionItem[], expectedRevision: number) {
+export async function saveCriteria(items: CriterionItem[], expected: SharedCriteria) {
   await runTransaction(db, async transaction => {
     const ref = doc(db, 'criteria', 'default');
     const snapshot = await transaction.get(ref);
-    if ((snapshot.data()?.revision ?? 0) !== expectedRevision) {
+    if ((snapshot.data()?.revision ?? 0) !== expected.revision) {
       throw new Error('Bộ tiêu chí đã được cập nhật từ phiên khác. Vui lòng kiểm tra rồi lưu lại.');
     }
-    transaction.set(ref, cleanDataForFirestore({ items, revision: expectedRevision + 1 }));
+    if (expected.revision === 0) {
+      const legacy = await transaction.get(doc(db, 'settings', 'criteria'));
+      if ((legacy.data()?.updatedAt ?? null) !== expected.legacyUpdatedAt) {
+        throw new Error('Bộ tiêu chí cũ đã thay đổi. Vui lòng kiểm tra rồi lưu lại.');
+      }
+    }
+    transaction.set(ref, cleanDataForFirestore({ items, revision: expected.revision + 1 }));
   });
 }
 
@@ -474,9 +500,19 @@ export async function saveScoreReviewStates(before: MonthlyScoreRecord[], after:
     current.forEach((snapshot, index) => {
       const previous = before[index];
       const data = snapshot.data();
-      if (!data || data.status !== previous.status || data.totalScore !== previous.totalScore ||
-          data.bghApprovedScore !== previous.bghApprovedScore) {
+      if (!data || data.status !== previous.status || data.staffId !== previous.staffId ||
+          data.departmentId !== previous.departmentId || data.baseScore !== previous.baseScore ||
+          data.totalBonus !== previous.totalBonus || data.totalPenalty !== previous.totalPenalty ||
+          data.totalScore !== previous.totalScore || data.bghApprovedScore !== previous.bghApprovedScore ||
+          JSON.stringify(data.bonusItems) !== JSON.stringify(previous.bonusItems) ||
+          JSON.stringify(data.penaltyItems) !== JSON.stringify(previous.penaltyItems)) {
         throw new Error('Hồ sơ đã thay đổi. Vui lòng kiểm tra lại trước khi thao tác.');
+      }
+      if ((after[index].status === 'submitted' || after[index].status === 'approved') &&
+          (![data.baseScore, data.totalBonus, data.totalPenalty, data.totalScore].every(Number.isFinite) ||
+            data.totalBonus < 0 || data.totalPenalty < 0 || data.totalScore < 0 ||
+            Math.abs(data.totalScore - (data.baseScore + data.totalBonus - data.totalPenalty)) >= 0.001)) {
+        throw new Error(`Hồ sơ ${previous.staffCode || previous.id} có tổng điểm đã lưu không khớp. Cần đối chiếu trước khi nộp hoặc duyệt.`);
       }
     });
     after.forEach((score, index) => {
@@ -615,10 +651,10 @@ export async function publishRankings(year: string, months: readonly number[]): 
 
   await Promise.all(uniqueMonths.map(month => runTransaction(db, async transaction => {
     const ranking = doc(db, RANKING_COLLECTION, rankingDocId(year, month));
-    await transaction.get(ranking);
+    const previous = await transaction.get(ranking);
     const current = await getDocsFromServer(query(collection(db, 'scores'), where('year', '==', year), where('month', '==', month)));
     const records = current.docs.map(score => score.data() as MonthlyScoreRecord);
-    transaction.set(ranking, cleanDataForFirestore(buildRankingDoc(records, year, month)));
+    transaction.set(ranking, cleanDataForFirestore(buildRankingDoc(records, year, month, new Date(), previous.data())));
   })));
 }
 

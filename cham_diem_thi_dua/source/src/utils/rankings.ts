@@ -33,6 +33,9 @@ export interface PublicRankingDoc {
 
 export const rankingDocId = (year: string, month: number): string => `${year}_${month}`;
 
+export const isRankingCandidate = (record: Pick<MonthlyScoreRecord, 'status'>): boolean =>
+  record.status === 'approved' || record.status === 'locked';
+
 export const isOfficialResult = (record: Pick<MonthlyScoreRecord, 'status' | 'bghApprovedScore' | 'approvedAt'>): boolean =>
   record.status === 'approved' || (record.status === 'locked' &&
     (Number.isFinite(record.bghApprovedScore) || Boolean(record.approvedAt)));
@@ -41,24 +44,36 @@ export function buildRankingDoc(
   records: MonthlyScoreRecord[],
   year: string,
   month: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  previous?: unknown,
 ): PublicRankingDoc {
-  const entries: PublicRankingEntry[] = records
-    .filter(r => r.year === year && r.month === month && isOfficialResult(r))
-    .map(r => ({
+  const prior = previous as Partial<PublicRankingDoc> | undefined;
+  const publishedLockedScores = new Map<string, number>();
+  if (prior?.year === year && prior.month === month && Array.isArray(prior.entries)) {
+    for (const entry of prior.entries) {
+      if (entry && isRankingCandidate(entry) && isString(entry.staffId) && isNumber(entry.score)) {
+        publishedLockedScores.set(entry.staffId, entry.score);
+      }
+    }
+  }
+  const entries = records.flatMap<PublicRankingEntry>(r => {
+    if (r.year !== year || r.month !== month || (r.status !== 'approved' && r.status !== 'locked')) return [];
+    const score = isOfficialResult(r) ? (r.bghApprovedScore ?? r.totalScore) : publishedLockedScores.get(r.staffId);
+    if (!isNumber(score)) return [];
+    return [{
       staffId: r.staffId,
       staffName: r.staffName,
-      staffCode: r.staffCode,
+      staffCode: r.staffCode ?? '',
       departmentId: r.departmentId,
       departmentName: r.departmentName,
       position: r.position,
       baseScore: r.baseScore,
       totalBonus: r.totalBonus,
       totalPenalty: r.totalPenalty,
-      score: r.bghApprovedScore ?? r.totalScore,
-      status: r.status as 'approved' | 'locked',
-    }))
-    .sort((a, b) => b.score - a.score || a.staffCode.localeCompare(b.staffCode));
+      score,
+      status: r.status,
+    }];
+  }).sort((a, b) => b.score - a.score || a.staffCode.localeCompare(b.staffCode));
 
   return { year, month, entries, updatedAt: now.toISOString() };
 }
