@@ -2,6 +2,7 @@ import {
   AlignmentType, BorderStyle, Document, Header, Packer, PageNumber, PageOrientation,
   Paragraph, ShadingType, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType,
 } from 'docx';
+import type { MonthlyScoreRecord, UserProfile } from '../types';
 
 const mm = (value: number) => Math.round(value * 1440 / 25.4);
 const pageWidth = mm(297) - mm(30) - mm(15);
@@ -21,11 +22,11 @@ function paragraph(text: string, options: { center?: boolean; justify?: boolean;
   });
 }
 
-function columns(rows: Paragraph[][][]) {
+function columns(rows: Paragraph[][][], width = pageWidth) {
   const count = rows[0].length;
-  const widths = rows[0].map((_, i) => Math.round(pageWidth * (i + 1) / count) - Math.round(pageWidth * i / count));
+  const widths = rows[0].map((_, i) => Math.round(width * (i + 1) / count) - Math.round(width * i / count));
   return new Table({
-    layout: TableLayoutType.FIXED, width: { size: pageWidth, type: WidthType.DXA }, columnWidths: widths, borders: noBorders,
+    layout: TableLayoutType.FIXED, width: { size: width, type: WidthType.DXA }, columnWidths: widths, borders: noBorders,
     rows: rows.map(groups => new TableRow({ cantSplit: true, children: groups.map((children, i) => new TableCell({
       width: { size: widths[i], type: WidthType.DXA }, children,
     })) })),
@@ -105,7 +106,10 @@ export function createReportWord(paper: HTMLElement, title: string, compact: boo
 }
 
 export async function downloadReportWord(paper: HTMLElement, filename: string, compact: boolean) {
-  const blob = await createReportWord(paper, filename.replace(/\.docx$/, ''), compact);
+  downloadWord(await createReportWord(paper, filename.replace(/\.docx$/, ''), compact), filename);
+}
+
+function downloadWord(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -114,4 +118,61 @@ export async function downloadReportWord(paper: HTMLElement, filename: string, c
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function downloadPersonalScoreWord(record: MonthlyScoreRecord, user: UserProfile) {
+  const width = mm(210 - 30 - 15);
+  const title = `PHIẾU ĐÁNH GIÁ THI ĐUA CÁ NHÂN THÁNG ${record.month}`;
+  const signature = (label: string, instruction: string, name?: string) => [
+    paragraph(label, { center: true, bold: true, size: 20, keepNext: true }),
+    paragraph(instruction, { center: true, italics: true, size: 20, after: mm(14), keepNext: true }),
+    paragraph(name || '..............................', { center: true, bold: true, size: 22 }),
+  ];
+  const signatures = [
+    signature('NGƯỜI TỰ ĐÁNH GIÁ', '(Ký và ghi rõ họ tên)', record.staffName),
+    signature('TỔ TRƯỞNG CHUYÊN MÔN', '(Ký và ghi rõ họ tên)', record.reviewedByName),
+  ];
+  if (user.role === 'bgh' || user.role === 'ttcm') {
+    signatures.push(signature('HIỆU TRƯỞNG PHÊ DUYỆT', '(Ký tên và đóng dấu)', record.approvedByName));
+  }
+  const detail = (label: string, total: number, sign: '+' | '-', items: MonthlyScoreRecord['bonusItems']) => [
+    paragraph(`${label}: ${sign}${total} điểm`, { bold: true, keepNext: items.length > 0 }),
+    ...items.map(item => {
+      const points = item.creditedPoints ?? item.points * item.quantity;
+      const original = item.creditedPoints == null ? ' (điểm gốc)' : '';
+      return paragraph(`• ${item.title}: ${sign}${points} điểm${original}${item.note ? ` · ${item.note}` : ''}`, { size: 22 });
+    }),
+  ];
+  const doc = new Document({
+    title,
+    styles: { default: { document: { run: { font: 'Times New Roman', size: 24, color: '000000' } } } },
+    sections: [{
+      properties: { page: {
+        size: { width: mm(210), height: mm(297), orientation: PageOrientation.PORTRAIT },
+        margin: { left: mm(30), right: mm(15), top: mm(20), bottom: mm(20) },
+      } },
+      children: [
+        columns([[
+          [paragraph('TRƯỜNG THPT CHU VĂN AN', { center: true, bold: true, size: 20 })],
+          [paragraph('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', { center: true, bold: true, size: 20 }),
+            paragraph('Độc lập - Tự do - Hạnh phúc', { center: true, bold: true, size: 20, underline: true })],
+        ]], width),
+        paragraph(title, { center: true, bold: true, size: 29, after: 100, keepNext: true }),
+        paragraph(`Năm học ${record.year}`, { center: true, italics: true, after: 150 }),
+        paragraph(`Họ và tên: ${record.staffName} · Mã CB: ${record.staffCode}`, { bold: true }),
+        paragraph(`Tổ chuyên môn: ${record.departmentName} · Chức vụ: ${record.position}`, { after: 120 }),
+        paragraph(`Điểm chuẩn: ${record.baseScore} điểm`, { bold: true }),
+        ...detail('Điểm cộng', record.totalBonus, '+', record.bonusItems ?? []),
+        ...detail('Điểm trừ', record.totalPenalty, '-', record.penaltyItems ?? []),
+        paragraph(`Điểm tự chấm: ${record.totalScore} điểm`, { bold: true }),
+        paragraph(`Điểm BGH duyệt: ${record.bghApprovedScore == null ? 'Chưa chốt' : `${record.bghApprovedScore} điểm`}`, { bold: true }),
+        ...(record.feedback ? [paragraph(`Ý kiến cá nhân: ${record.feedback}`)] : []),
+        ...(record.bghNotes ? [paragraph(`Ghi chú BGH: ${record.bghNotes}`)] : []),
+        paragraph('', { after: 150, keepNext: true }),
+        columns([signatures], width),
+      ],
+    }],
+  });
+  const code = (record.staffCode ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+  downloadWord(await Packer.toBlob(doc), `Phieu_Thi_Dua_${code || 'CBVC'}_Thang_${record.month}.docx`);
 }

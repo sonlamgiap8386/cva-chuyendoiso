@@ -12,7 +12,6 @@ import {
   Calendar,
   Info
 } from 'lucide-react';
-import { downloadReportWord } from '../utils/reportWord';
 import { getReportDepartmentId, scopeReportScores } from '../utils/reportScope';
 import { CURRENT_SCHOOL_YEAR } from '../data/constants';
 import { MonthlyScoreRecord, UserProfile, Department } from '../types';
@@ -79,10 +78,11 @@ export const ExportWordModal: React.FC<ExportWordModalProps> = ({
 
   // Filter scores by selected department
   const filteredScores = useMemo(() => {
-    const list = scopeReportScores(scores, effectiveDeptId === 'all' ? undefined : effectiveDeptId);
+    const allowedScores = currentUser.role === 'gv' ? scores.filter(score => score.staffId === currentUser.id) : scores;
+    const list = scopeReportScores(allowedScores, effectiveDeptId === 'all' ? undefined : effectiveDeptId);
     // Sort by final score descending
     return [...list].sort(compareEmulationScores);
-  }, [scores, effectiveDeptId]);
+  }, [scores, effectiveDeptId, currentUser.id, currentUser.role]);
 
   // Overall statistics for executive summary
   const stats = useMemo(() => {
@@ -142,6 +142,7 @@ export const ExportWordModal: React.FC<ExportWordModalProps> = ({
     setExporting(true);
     setExportError('');
     try {
+      const { downloadReportWord } = await import('../utils/reportWord');
       const documentKind = isMonthlyMinutes ? 'Bien_Ban_Thi_Dua' : 'Bang_Diem_Thi_Dua';
       const filename = `${documentKind}_${periodShortTitle}_THPT_Chu_Van_An.docx`;
       await downloadReportWord(paper, filename, fontSizeOption === 'compact');
@@ -265,6 +266,7 @@ export const ExportWordModal: React.FC<ExportWordModalProps> = ({
             }`}
             style={{
               fontFamily: '"Times New Roman", Times, "Noto Serif", Georgia, serif',
+              backgroundColor: '#ffffff',
               color: '#000000',
               lineHeight: 1.4,
             }}
@@ -348,7 +350,7 @@ export const ExportWordModal: React.FC<ExportWordModalProps> = ({
               <h2 data-report-intro className="font-bold">II. TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ THI ĐUA</h2>
               <p data-report-intro>
                 Căn cứ Quy chế thi đua của Trường THPT Chu Văn An và mức điểm chuẩn <strong>{periodBaseScore} điểm</strong>,
-                Hội đồng đã thẩm tra hồ sơ, đối chiếu minh chứng và thống nhất kết quả đánh giá như sau:
+                {isDepartmentLeader ? 'tổ chuyên môn' : 'Hội đồng'} đã thẩm tra hồ sơ, đối chiếu minh chứng và thống nhất kết quả đánh giá như sau:
               </p>
             </div>
 
